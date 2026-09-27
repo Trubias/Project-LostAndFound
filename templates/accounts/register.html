@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% block title %}Create Account{% endblock %}
+{% block meta_description %}Register a new account on the Lost & Found Management System{% endblock %}
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-card animate-in">
+    <div class="auth-logo"><i class="bi bi-person-plus-fill"></i></div>
+    <h1 class="auth-title">Create Account</h1>
+    <p class="auth-subtitle">Join the Lost &amp; Found Management System</p>
+
+    {% if messages %}
+      {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show mb-3" role="alert">
+        <i class="bi bi-info-circle me-2"></i>{{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      {% endfor %}
+    {% endif %}
+
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger mb-3">
+      {% for error in form.non_field_errors %}
+      <div><i class="bi bi-exclamation-circle me-2"></i>{{ error }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" id="registerForm" novalidate>
+      {% csrf_token %}
+
+      <div class="row g-3 mb-3">
+        <div class="col-6">
+          <label class="form-label" for="{{ form.first_name.id_for_label }}">First Name</label>
+          {{ form.first_name }}
+          {% if form.first_name.errors %}
+          <div class="invalid-feedback d-block">{{ form.first_name.errors.0 }}</div>
+          {% endif %}
+        </div>
+        <div class="col-6">
+          <label class="form-label" for="{{ form.last_name.id_for_label }}">Last Name</label>
+          {{ form.last_name }}
+          {% if form.last_name.errors %}
+          <div class="invalid-feedback d-block">{{ form.last_name.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.username.id_for_label }}">Username</label>
+        {{ form.username }}
+        {% if form.username.errors %}
+        <div class="invalid-feedback d-block">{{ form.username.errors.0 }}</div>
+        {% endif %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.email.id_for_label }}">Email Address</label>
+        {{ form.email }}
+        {% if form.email.errors %}
+        <div class="invalid-feedback d-block">{{ form.email.errors.0 }}</div>
+        {% endif %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.password.id_for_label }}">Password</label>
+        <div class="input-group">
+          {{ form.password }}
+          <button class="btn btn-outline-secondary" type="button" id="togglePwd" tabindex="-1">
+            <i class="bi bi-eye" id="pwdIcon"></i>
+          </button>
+        </div>
+        {% if form.password.errors %}
+        <div class="invalid-feedback d-block">{{ form.password.errors.0 }}</div>
+        {% endif %}
+        <div class="form-text text-muted small mt-1">
+          <i class="bi bi-shield-check me-1"></i>Minimum 8 characters, not too common.
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label" for="{{ form.confirm_password.id_for_label }}">Confirm Password</label>
+        <div class="input-group">
+          {{ form.confirm_password }}
+          <button class="btn btn-outline-secondary" type="button" id="togglePwd2" tabindex="-1">
+            <i class="bi bi-eye" id="pwdIcon2"></i>
+          </button>
+        </div>
+        {% if form.confirm_password.errors %}
+        <div class="invalid-feedback d-block">{{ form.confirm_password.errors.0 }}</div>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100 py-2 mb-3" id="registerBtn">
+        <i class="bi bi-person-check me-2"></i>Create Account
+      </button>
+    </form>
+
+    <p class="text-center text-muted small mb-0">
+      Already have an account?
+      <a href="{% url 'accounts:login' %}" class="fw-600 text-primary text-decoration-none">Sign in</a>
+    </p>
+  </div>
+</div>
+
+<style>
+  /* Fix Bootstrap input-group border-radius with custom form-control */
+  .input-group .form-control { border-radius: 10px 0 0 10px !important; }
+  .input-group .btn-outline-secondary {
+    border-radius: 0 10px 10px 0 !important;
+    border-left: 0;
+  }
+  .fw-600 { font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function togglePassword(btnId, inputId, iconId) {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(inputId);
+      const icon  = document.getElementById(iconId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('bi-eye', 'bi-eye-slash');
+      } else {
+        input.type = 'password';
+        icon.classList.replace('bi-eye-slash', 'bi-eye');
+      }
+    });
+  }
+  togglePassword('togglePwd',  'id_password',         'pwdIcon');
+  togglePassword('togglePwd2', 'id_confirm_password', 'pwdIcon2');
+</script>
+{% endblock %}

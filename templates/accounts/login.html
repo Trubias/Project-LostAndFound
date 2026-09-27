@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Sign In{% endblock %}
+{% block meta_description %}Log in to the Lost & Found Management System{% endblock %}
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-card animate-in">
+    <div class="auth-logo"><i class="bi bi-search-heart-fill"></i></div>
+    <h1 class="auth-title">Welcome Back</h1>
+    <p class="auth-subtitle">Sign in to Lost &amp; Found Management System</p>
+
+    {% if messages %}
+      {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show mb-3" role="alert">
+        {% if message.tags == 'success' %}<i class="bi bi-check-circle me-2"></i>
+        {% elif message.tags == 'error' or message.tags == 'danger' %}<i class="bi bi-exclamation-circle me-2"></i>
+        {% else %}<i class="bi bi-info-circle me-2"></i>{% endif %}
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="post" id="loginForm" novalidate>
+      {% csrf_token %}
+
+      <div class="mb-3">
+        <label class="form-label" for="id_username">Username</label>
+        <div class="input-group">
+          <span class="input-group-text bg-white border-end-0 rounded-start-3">
+            <i class="bi bi-person text-muted"></i>
+          </span>
+          <input type="text" name="username" id="id_username"
+                 class="form-control border-start-0"
+                 placeholder="Enter your username"
+                 value="{{ request.POST.username|default:'' }}"
+                 autocomplete="username"
+                 style="border-radius: 0 10px 10px 0;" required />
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label" for="id_password">Password</label>
+        <div class="input-group">
+          <span class="input-group-text bg-white border-end-0 rounded-start-3">
+            <i class="bi bi-lock text-muted"></i>
+          </span>
+          <input type="password" name="password" id="id_password"
+                 class="form-control border-start-0 border-end-0"
+                 placeholder="Enter your password"
+                 autocomplete="current-password"
+                 style="border-radius: 0;" required />
+          <button class="btn btn-outline-secondary border-start-0" type="button" id="togglePwd" tabindex="-1"
+                  style="border-radius: 0 10px 10px 0;">
+            <i class="bi bi-eye" id="pwdIcon"></i>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100 py-2 mb-3" id="loginBtn">
+        <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+      </button>
+    </form>
+
+    <p class="text-center text-muted small mb-0">
+      Don't have an account?
+      <a href="{% url 'accounts:register' %}" class="fw-semibold text-primary text-decoration-none">Create one</a>
+    </p>
+  </div>
+</div>
+
+<style>
+  .input-group-text { border-color: #dee2e6; }
+  .form-control.border-start-0:focus { border-left-color: transparent; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.getElementById('togglePwd').addEventListener('click', function () {
+    const input = document.getElementById('id_password');
+    const icon  = document.getElementById('pwdIcon');
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.classList.replace('bi-eye', 'bi-eye-slash');
+    } else {
+      input.type = 'password';
+      icon.classList.replace('bi-eye-slash', 'bi-eye');
+    }
+  });
+</script>
+{% endblock %}

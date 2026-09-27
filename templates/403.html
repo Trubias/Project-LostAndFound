@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}403 — Access Denied{% endblock %}
+
+{% block content %}
+<div class="container py-5 text-center animate-in">
+  <div class="mx-auto" style="max-width: 480px;">
+    <div class="mb-4" style="font-size:5rem; line-height:1;">
+      <span style="background:linear-gradient(135deg,#1565C0,#AB47BC);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">403</span>
+    </div>
+    <h1 class="h3 fw-bold mb-2">Access Denied</h1>
+    <p class="text-muted mb-4">
+      You don't have permission to view this page.<br>
+      This area is restricted to administrators only.
+    </p>
+    <div class="d-flex gap-3 justify-content-center">
+      <a href="{% url 'accounts:dashboard' %}" class="btn btn-primary px-4">
+        <i class="bi bi-house me-2"></i>Go to Dashboard
+      </a>
+      <a href="{% url 'accounts:logout' %}" class="btn btn-outline-secondary px-4">
+        <i class="bi bi-box-arrow-right me-1"></i>Logout
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
