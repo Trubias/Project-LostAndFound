@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Restore Item{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card p-4 text-center animate-in">
+        <div class="mb-3">
+          <i class="bi bi-arrow-counterclockwise text-success" style="font-size:3.5rem;"></i>
+        </div>
+        <h1 class="h4 fw-bold mb-2">Restore This Item?</h1>
+        <p class="text-muted mb-1">You are about to restore:</p>
+        <p class="fw-bold">{{ item.title }}</p>
+        <p class="text-muted small mb-4">
+          The item will be moved back to ACTIVE status and will appear in the main listing.
+        </p>
+        <form method="post" class="d-flex gap-3 justify-content-center">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-success px-4" id="confirmRestoreBtn">
+            <i class="bi bi-arrow-counterclockwise me-2"></i>Yes, Restore It
+          </button>
+          <a href="{% url 'items:item_detail' item.pk %}" class="btn btn-outline-secondary px-4">Cancel</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

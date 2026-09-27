@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% block title %}{{ item.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3 animate-in">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'items:item_list' %}">Browse Items</a></li>
+      <li class="breadcrumb-item active">{{ item.title|truncatechars:40 }}</li>
+    </ol>
+  </nav>
+
+  <div class="row g-4">
+    <!-- Image Column -->
+    <div class="col-md-5 animate-in">
+      <div class="card overflow-hidden h-100">
+        {% if item.image %}
+        <img src="{{ item.image.url }}" alt="{{ item.title }}" class="img-fluid"
+             style="width:100%; max-height:400px; object-fit:cover;">
+        {% else %}
+        <div class="d-flex align-items-center justify-content-center bg-light"
+             style="height:300px;">
+          <div class="text-center text-muted">
+            <i class="bi bi-image" style="font-size:4rem;"></i>
+            <p class="mt-2 small">No image uploaded</p>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Details Column -->
+    <div class="col-md-7 animate-in delay-1">
+      <div class="card p-4 h-100">
+        <!-- Badges -->
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          {% if item.item_type == 'LOST' %}
+          <span class="badge bg-warning text-dark fs-6 px-3 py-2"><i class="bi bi-question-circle me-1"></i>LOST</span>
+          {% else %}
+          <span class="badge bg-success fs-6 px-3 py-2"><i class="bi bi-bag-check me-1"></i>FOUND</span>
+          {% endif %}
+          {% if item.status == 'ACTIVE' %}
+          <span class="badge bg-primary fs-6 px-3 py-2"><i class="bi bi-check-circle me-1"></i>ACTIVE</span>
+          {% else %}
+          <span class="badge bg-secondary fs-6 px-3 py-2"><i class="bi bi-archive me-1"></i>ARCHIVED</span>
+          {% endif %}
+          {% if item.category %}
+          <span class="badge bg-light text-dark border fs-6 px-3 py-2">{{ item.category.name }}</span>
+          {% endif %}
+        </div>
+
+        <h1 class="h3 fw-bold mb-3">{{ item.title }}</h1>
+
+        <div class="mb-4">
+          <h2 class="h6 text-uppercase text-muted fw-bold mb-2">Description</h2>
+          <p class="mb-0">{{ item.description }}</p>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-sm-6">
+            <div class="d-flex align-items-start gap-2">
+              <i class="bi bi-geo-alt-fill text-primary mt-1"></i>
+              <div>
+                <div class="small text-muted fw-semibold">Location</div>
+                <div class="fw-medium">{{ item.location }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="d-flex align-items-start gap-2">
+              <i class="bi bi-calendar-event-fill text-primary mt-1"></i>
+              <div>
+                <div class="small text-muted fw-semibold">Date {{ item.get_item_type_display }}</div>
+                <div class="fw-medium">{{ item.date_occurred|date:"F d, Y" }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="d-flex align-items-start gap-2">
+              <i class="bi bi-person-fill text-primary mt-1"></i>
+              <div>
+                <div class="small text-muted fw-semibold">Reported By</div>
+                <div class="fw-medium">{{ item.reporter.get_full_name|default:item.reporter.username }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="d-flex align-items-start gap-2">
+              <i class="bi bi-clock-fill text-primary mt-1"></i>
+              <div>
+                <div class="small text-muted fw-semibold">Date Reported</div>
+                <div class="fw-medium">{{ item.created_at|date:"F d, Y" }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="d-flex align-items-start gap-2">
+              <i class="bi bi-pencil-fill text-primary mt-1"></i>
+              <div>
+                <div class="small text-muted fw-semibold">Last Updated</div>
+                <div class="fw-medium">{{ item.updated_at|date:"F d, Y" }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex flex-wrap gap-2 mt-auto pt-3 border-top">
+          <a href="{% url 'items:item_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Back to List
+          </a>
+          {% if can_edit %}
+          <a href="{% url 'items:edit_item' item.pk %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-pencil me-1"></i>Edit
+          </a>
+          {% endif %}
+          {% if can_archive %}
+          <form method="post" action="{% url 'items:archive_item' item.pk %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-warning btn-sm"
+                    onclick="return confirm('Archive this item? It will be hidden from the active listing.')">
+              <i class="bi bi-archive me-1"></i>Archive
+            </button>
+          </form>
+          {% endif %}
+          {% if can_restore %}
+          <form method="post" action="{% url 'items:restore_item' item.pk %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-success btn-sm"
+                    onclick="return confirm('Restore this item to active status?')">
+              <i class="bi bi-arrow-counterclockwise me-1"></i>Restore
+            </button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

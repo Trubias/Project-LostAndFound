@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% block title %}My Reports{% endblock %}
+{% block nav_my_items %}active{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Header -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3 animate-in">
+    <div>
+      <h1 class="h3 fw-bold mb-0"><i class="bi bi-clipboard2-check-fill text-primary me-2"></i>My Reports</h1>
+      <p class="text-muted small mb-0 mt-1">
+        <strong>{{ active_items.count }}</strong> active &nbsp;·&nbsp;
+        <strong>{{ archived_items.count }}</strong> archived
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'items:report_lost' %}" class="btn btn-warning btn-sm fw-semibold">
+        <i class="bi bi-question-circle me-1"></i>Report Lost
+      </a>
+      <a href="{% url 'items:report_found' %}" class="btn btn-success btn-sm fw-semibold">
+        <i class="bi bi-bag-check me-1"></i>Report Found
+      </a>
+    </div>
+  </div>
+
+  <!-- Active Reports -->
+  <h2 class="h6 fw-bold text-uppercase text-muted mb-3 animate-in delay-1">
+    <i class="bi bi-check-circle-fill text-success me-1"></i>Active Reports ({{ active_items.count }})
+  </h2>
+
+  {% if active_items %}
+  <div class="row g-3 mb-5">
+    {% for item in active_items %}
+    <div class="col-md-6 col-xl-4 animate-in delay-{{ forloop.counter }}">
+      <div class="card h-100">
+        {% if item.image %}
+        <img src="{{ item.image.url }}" alt="{{ item.title }}"
+             class="card-img-top" style="height:160px; object-fit:cover; border-radius:16px 16px 0 0;">
+        {% else %}
+        <div class="d-flex align-items-center justify-content-center bg-light"
+             style="height:100px; border-radius:16px 16px 0 0;">
+          <i class="bi bi-image text-muted fs-2"></i>
+        </div>
+        {% endif %}
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex gap-2 mb-2">
+            {% if item.item_type == 'LOST' %}
+            <span class="badge bg-warning text-dark"><i class="bi bi-question-circle me-1"></i>LOST</span>
+            {% else %}
+            <span class="badge bg-success"><i class="bi bi-bag-check me-1"></i>FOUND</span>
+            {% endif %}
+            <span class="badge bg-primary"><i class="bi bi-check-circle me-1"></i>ACTIVE</span>
+          </div>
+          <h3 class="h6 fw-bold mb-1 text-truncate">{{ item.title }}</h3>
+          <div class="text-muted small mb-1"><i class="bi bi-geo-alt me-1"></i>{{ item.location }}</div>
+          <div class="text-muted small mb-3"><i class="bi bi-calendar3 me-1"></i>{{ item.date_occurred|date:"M d, Y" }}</div>
+          <div class="d-flex gap-2 mt-auto">
+            <a href="{% url 'items:item_detail' item.pk %}" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-eye me-1"></i>View
+            </a>
+            <a href="{% url 'items:edit_item' item.pk %}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-pencil me-1"></i>Edit
+            </a>
+            <form method="post" action="{% url 'items:archive_item' item.pk %}" class="d-inline">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-warning"
+                      onclick="return confirm('Archive this report?')">
+                <i class="bi bi-archive me-1"></i>Archive
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card placeholder-card p-4 text-center mb-5 animate-in delay-1">
+    <i class="bi bi-clipboard2-x text-muted fs-1 mb-2"></i>
+    <p class="text-muted mb-3">You have no active reports.</p>
+    <div class="d-flex gap-2 justify-content-center">
+      <a href="{% url 'items:report_lost' %}" class="btn btn-warning btn-sm">Report Lost Item</a>
+      <a href="{% url 'items:report_found' %}" class="btn btn-success btn-sm">Report Found Item</a>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Archived Reports -->
+  <h2 class="h6 fw-bold text-uppercase text-muted mb-3 animate-in">
+    <i class="bi bi-archive-fill text-secondary me-1"></i>Archived Reports ({{ archived_items.count }})
+  </h2>
+
+  {% if archived_items %}
+  <div class="row g-3">
+    {% for item in archived_items %}
+    <div class="col-md-6 col-xl-4 animate-in delay-{{ forloop.counter }}">
+      <div class="card h-100 opacity-75">
+        {% if item.image %}
+        <img src="{{ item.image.url }}" alt="{{ item.title }}"
+             class="card-img-top" style="height:100px; object-fit:cover; border-radius:16px 16px 0 0; filter:grayscale(50%);">
+        {% else %}
+        <div class="d-flex align-items-center justify-content-center bg-light"
+             style="height:80px; border-radius:16px 16px 0 0;">
+          <i class="bi bi-image text-muted fs-3"></i>
+        </div>
+        {% endif %}
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex gap-2 mb-2">
+            {% if item.item_type == 'LOST' %}
+            <span class="badge bg-warning text-dark"><i class="bi bi-question-circle me-1"></i>LOST</span>
+            {% else %}
+            <span class="badge bg-success"><i class="bi bi-bag-check me-1"></i>FOUND</span>
+            {% endif %}
+            <span class="badge bg-secondary"><i class="bi bi-archive me-1"></i>ARCHIVED</span>
+          </div>
+          <h3 class="h6 fw-bold mb-1 text-truncate text-muted">{{ item.title }}</h3>
+          <div class="text-muted small mb-1"><i class="bi bi-geo-alt me-1"></i>{{ item.location }}</div>
+          <div class="d-flex gap-2 mt-auto">
+            <a href="{% url 'items:item_detail' item.pk %}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-eye me-1"></i>View
+            </a>
+            <form method="post" action="{% url 'items:restore_item' item.pk %}" class="d-inline">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-success"
+                      onclick="return confirm('Restore this report to active?')">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>Restore
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card placeholder-card p-3 text-center animate-in">
+    <p class="text-muted small mb-0">No archived reports.</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% block title %}{{ form_title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+
+      <!-- Breadcrumb -->
+      <nav aria-label="breadcrumb" class="mb-3 animate-in">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url 'items:item_list' %}">Browse Items</a></li>
+          {% if is_edit %}
+          <li class="breadcrumb-item"><a href="{% url 'items:item_detail' item.pk %}">{{ item.title|truncatechars:30 }}</a></li>
+          <li class="breadcrumb-item active">Edit</li>
+          {% else %}
+          <li class="breadcrumb-item active">{{ form_title }}</li>
+          {% endif %}
+        </ol>
+      </nav>
+
+      <div class="card p-4 animate-in delay-1">
+        <!-- Form Header -->
+        <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+          <div class="rounded-3 p-3 bg-light">
+            <i class="bi {{ form_icon }} {{ form_color }} fs-3"></i>
+          </div>
+          <div>
+            <h1 class="h4 fw-bold mb-0">{{ form_title }}</h1>
+            <p class="text-muted small mb-0">{{ form_subtitle }}</p>
+          </div>
+          <!-- Type Badge -->
+          {% if item_type == 'LOST' %}
+          <span class="ms-auto badge bg-warning text-dark fs-6 px-3 py-2">LOST</span>
+          {% elif item_type == 'FOUND' %}
+          <span class="ms-auto badge bg-success fs-6 px-3 py-2">FOUND</span>
+          {% endif %}
+        </div>
+
+        <!-- Non-field errors -->
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger mb-3">
+          {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" id="itemForm" novalidate>
+          {% csrf_token %}
+
+          <div class="row g-3">
+            <!-- Title -->
+            <div class="col-12">
+              <label class="form-label" for="{{ form.title.id_for_label }}">
+                {{ form.title.label }} <span class="text-danger">*</span>
+              </label>
+              {{ form.title }}
+              {% if form.title.errors %}
+              <div class="invalid-feedback d-block">{{ form.title.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Description -->
+            <div class="col-12">
+              <label class="form-label" for="{{ form.description.id_for_label }}">
+                {{ form.description.label }} <span class="text-danger">*</span>
+              </label>
+              {{ form.description }}
+              {% if form.description.errors %}
+              <div class="invalid-feedback d-block">{{ form.description.errors.0 }}</div>
+              {% endif %}
+              <div class="form-text">Be as descriptive as possible — color, brand, unique markings, etc.</div>
+            </div>
+
+            <!-- Category -->
+            <div class="col-md-6">
+              <label class="form-label" for="{{ form.category.id_for_label }}">{{ form.category.label }}</label>
+              {{ form.category }}
+              {% if form.category.errors %}
+              <div class="invalid-feedback d-block">{{ form.category.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Location -->
+            <div class="col-md-6">
+              <label class="form-label" for="{{ form.location.id_for_label }}">
+                {{ form.location.label }} <span class="text-danger">*</span>
+              </label>
+              {{ form.location }}
+              {% if form.location.errors %}
+              <div class="invalid-feedback d-block">{{ form.location.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Date Occurred -->
+            <div class="col-md-6">
+              <label class="form-label" for="{{ form.date_occurred.id_for_label }}">
+                {{ form.date_occurred.label }} <span class="text-danger">*</span>
+              </label>
+              {{ form.date_occurred }}
+              {% if form.date_occurred.errors %}
+              <div class="invalid-feedback d-block">{{ form.date_occurred.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Image -->
+            <div class="col-md-6">
+              <label class="form-label" for="{{ form.image.id_for_label }}">{{ form.image.label }}</label>
+              {% if is_edit and item.image %}
+              <div class="mb-2">
+                <img src="{{ item.image.url }}" alt="Current" class="rounded-3 border"
+                     style="height:60px; width:60px; object-fit:cover;">
+                <span class="text-muted small ms-2">Current image (upload new to replace)</span>
+              </div>
+              {% endif %}
+              {{ form.image }}
+              {% if form.image.errors %}
+              <div class="invalid-feedback d-block">{{ form.image.errors.0 }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Required fields notice -->
+          <p class="text-muted small mt-3 mb-0"><span class="text-danger">*</span> Required fields</p>
+
+          <!-- Buttons -->
+          <div class="d-flex gap-2 mt-4 pt-3 border-top">
+            <button type="submit" class="btn btn-primary px-4" id="submitBtn">
+              <i class="bi bi-check-lg me-2"></i>{{ submit_label }}
+            </button>
+            {% if is_edit %}
+            <a href="{% url 'items:item_detail' item.pk %}" class="btn btn-outline-secondary px-4">Cancel</a>
+            {% else %}
+            <a href="{% url 'items:my_items' %}" class="btn btn-outline-secondary px-4">Cancel</a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -53,11 +53,11 @@
     </div>
   </div>
 
-  <!-- Real Stats -->
+  <!-- User Stats -->
   <h2 class="h6 fw-bold text-uppercase text-muted mb-3 animate-in delay-1">
-    <i class="bi bi-bar-chart-fill me-1 text-primary"></i>Live Statistics
+    <i class="bi bi-bar-chart-fill me-1 text-primary"></i>User Statistics
   </h2>
-  <div class="row g-3 mb-5">
+  <div class="row g-3 mb-4">
     <div class="col-sm-6 col-lg-4 animate-in delay-1">
       <div class="stat-card bg-gradient-blue h-100">
         <div class="d-flex justify-content-between align-items-start">
@@ -96,69 +96,121 @@
     </div>
   </div>
 
-  <!-- Placeholder Cards for future sprints -->
+  <!-- Item Stats -->
   <h2 class="h6 fw-bold text-uppercase text-muted mb-3 animate-in delay-2">
-    <i class="bi bi-layout-three-columns me-1 text-muted"></i>Upcoming Features
+    <i class="bi bi-box-seam-fill me-1 text-warning"></i>Item Statistics
+  </h2>
+  <div class="row g-3 mb-5">
+    <div class="col-sm-6 col-lg-4 animate-in delay-1">
+      <div class="stat-card bg-gradient-orange h-100">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="stat-label">Active Items</div>
+            <div class="stat-number mt-2">{{ total_active_items }}</div>
+          </div>
+          <i class="bi bi-check-circle stat-icon"></i>
+        </div>
+        <div class="mt-3 small opacity-75">Currently active reports</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-4 animate-in delay-2">
+      <div class="stat-card bg-gradient-gray h-100">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="stat-label">Archived Items</div>
+            <div class="stat-number mt-2">{{ total_archived_items }}</div>
+          </div>
+          <i class="bi bi-archive stat-icon"></i>
+        </div>
+        <div class="mt-3 small opacity-75">Archived reports</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-4 animate-in delay-3">
+      <div class="stat-card bg-gradient-purple h-100">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="stat-label">Categories</div>
+            <div class="stat-number mt-2">{{ total_categories }}</div>
+          </div>
+          <i class="bi bi-tags stat-icon"></i>
+        </div>
+        <div class="mt-3 small opacity-75">Item categories</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-4 animate-in delay-4">
+      <div class="stat-card bg-gradient-orange h-100">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="stat-label">Lost Reports</div>
+            <div class="stat-number mt-2">{{ total_lost_items }}</div>
+          </div>
+          <i class="bi bi-question-circle stat-icon"></i>
+        </div>
+        <div class="mt-3 small opacity-75">All lost item reports</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-4 animate-in delay-4">
+      <div class="stat-card bg-gradient-teal h-100">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="stat-label">Found Reports</div>
+            <div class="stat-number mt-2">{{ total_found_items }}</div>
+          </div>
+          <i class="bi bi-bag-check stat-icon"></i>
+        </div>
+        <div class="mt-3 small opacity-75">All found item reports</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Admin Actions -->
+  <h2 class="h6 fw-bold text-uppercase text-muted mb-3 animate-in">
+    <i class="bi bi-lightning-fill me-1 text-warning"></i>Manage
   </h2>
   <div class="row g-4">
-
-    <!-- Lost Items -->
     <div class="col-md-6 col-xl-3 animate-in delay-1">
-      <div class="card placeholder-card p-4 h-100">
-        <div class="text-center mb-3">
-          <div class="mx-auto mb-2" style="width:56px;height:56px;border-radius:14px;background:#fff3e0;display:flex;align-items:center;justify-content:center;">
-            <i class="bi bi-question-circle-fill text-warning fs-3"></i>
-          </div>
-          <h3 class="h6 fw-bold mb-1">Lost Items</h3>
-          <span class="badge bg-warning text-dark placeholder-badge">Sprint 2</span>
+      <div class="card p-4 h-100 text-center">
+        <div class="mx-auto mb-2" style="width:56px;height:56px;border-radius:14px;background:#e3f2fd;display:flex;align-items:center;justify-content:center;">
+          <i class="bi bi-grid-3x3-gap-fill text-primary fs-3"></i>
         </div>
-        <p class="text-muted small text-center mb-0">Manage all lost item reports submitted by users.</p>
+        <h3 class="h6 fw-bold mb-2">Browse All Items</h3>
+        <p class="text-muted small mb-3">View, edit, archive, or restore all submitted reports.</p>
+        <a href="{% url 'items:item_list' %}" class="btn btn-primary btn-sm">Open Items</a>
       </div>
     </div>
-
-    <!-- Found Items -->
     <div class="col-md-6 col-xl-3 animate-in delay-2">
-      <div class="card placeholder-card p-4 h-100">
-        <div class="text-center mb-3">
-          <div class="mx-auto mb-2" style="width:56px;height:56px;border-radius:14px;background:#e8f5e9;display:flex;align-items:center;justify-content:center;">
-            <i class="bi bi-bag-check-fill text-success fs-3"></i>
-          </div>
-          <h3 class="h6 fw-bold mb-1">Found Items</h3>
-          <span class="badge bg-warning text-dark placeholder-badge">Sprint 2</span>
+      <div class="card p-4 h-100 text-center">
+        <div class="mx-auto mb-2" style="width:56px;height:56px;border-radius:14px;background:#f3e5f5;display:flex;align-items:center;justify-content:center;">
+          <i class="bi bi-tags-fill fs-3" style="color:#7b1fa2;"></i>
         </div>
-        <p class="text-muted small text-center mb-0">Review and manage items that have been found and turned in.</p>
+        <h3 class="h6 fw-bold mb-2">Item Categories</h3>
+        <p class="text-muted small mb-3">Add, edit, and organize categories for items.</p>
+        <a href="{% url 'items:category_list' %}" class="btn btn-outline-primary btn-sm">Manage Categories</a>
       </div>
     </div>
-
-    <!-- Claims -->
     <div class="col-md-6 col-xl-3 animate-in delay-3">
-      <div class="card placeholder-card p-4 h-100">
-        <div class="text-center mb-3">
-          <div class="mx-auto mb-2" style="width:56px;height:56px;border-radius:14px;background:#e3f2fd;display:flex;align-items:center;justify-content:center;">
-            <i class="bi bi-hand-index-thumb-fill text-primary fs-3"></i>
-          </div>
-          <h3 class="h6 fw-bold mb-1">Claims</h3>
-          <span class="badge bg-secondary placeholder-badge">Sprint 4</span>
+      <div class="card placeholder-card p-4 h-100 text-center">
+        <div class="mx-auto mb-2" style="width:56px;height:56px;border-radius:14px;background:#e3f2fd;display:flex;align-items:center;justify-content:center;">
+          <i class="bi bi-hand-index-thumb-fill text-primary fs-3"></i>
         </div>
-        <p class="text-muted small text-center mb-0">Review and approve or reject item claim requests from users.</p>
+        <h3 class="h6 fw-bold mb-1">Claims</h3>
+        <span class="badge bg-secondary placeholder-badge mb-2">Sprint 4</span>
+        <p class="text-muted small mb-0">Approve or reject item claim requests.</p>
       </div>
     </div>
-
-    <!-- Reports & Analytics -->
     <div class="col-md-6 col-xl-3 animate-in delay-4">
-      <div class="card placeholder-card p-4 h-100">
-        <div class="text-center mb-3">
-          <div class="mx-auto mb-2" style="width:56px;height:56px;border-radius:14px;background:#f3e5f5;display:flex;align-items:center;justify-content:center;">
-            <i class="bi bi-graph-up-arrow fs-3" style="color:#7b1fa2;"></i>
-          </div>
-          <h3 class="h6 fw-bold mb-1">Reports & Analytics</h3>
-          <span class="badge bg-secondary placeholder-badge">Future</span>
+
+      <div class="card placeholder-card p-4 h-100 text-center">
+        <div class="mx-auto mb-2" style="width:56px;height:56px;border-radius:14px;background:#f3e5f5;display:flex;align-items:center;justify-content:center;">
+          <i class="bi bi-graph-up-arrow fs-3" style="color:#7b1fa2;"></i>
         </div>
-        <p class="text-muted small text-center mb-0">View detailed analytics and generate reports on system activity.</p>
+        <h3 class="h6 fw-bold mb-1">Reports & Analytics</h3>
+        <span class="badge bg-secondary placeholder-badge mb-2">Future</span>
+        <p class="text-muted small mb-0">View analytics and generate reports.</p>
       </div>
     </div>
-
   </div>
 
 </div>
 {% endblock %}
+

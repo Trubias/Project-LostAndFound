@@ -234,15 +234,81 @@
         {% if user.is_authenticated %}
         <ul class="navbar-nav me-auto">
           {% if user.profile.is_admin %}
+          <!-- ADMIN Navigation -->
           <li class="nav-item">
             <a class="nav-link {% block nav_admin %}{% endblock %}" href="{% url 'accounts:admin_dashboard' %}">
-              <i class="bi bi-speedometer2 me-1"></i>Admin Dashboard
+              <i class="bi bi-speedometer2 me-1"></i>Dashboard
             </a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link {% block nav_items %}{% endblock %}" href="{% url 'items:item_list' %}">
+              <i class="bi bi-grid-3x3-gap me-1"></i>Browse Items
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% block nav_lost_admin %}{% endblock %}" href="{% url 'items:lost_items' %}">
+              <i class="bi bi-question-circle me-1"></i>Lost Items
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% block nav_found_admin %}{% endblock %}" href="{% url 'items:found_items' %}">
+              <i class="bi bi-bag-check me-1"></i>Found Items
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% block nav_categories %}{% endblock %}" href="{% url 'items:category_list' %}">
+              <i class="bi bi-tags me-1"></i>Categories
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/admin/">
+              <i class="bi bi-gear me-1"></i>Django Admin
+            </a>
+          </li>
+
           {% else %}
+          <!-- USER Navigation -->
           <li class="nav-item">
             <a class="nav-link {% block nav_dashboard %}{% endblock %}" href="{% url 'accounts:dashboard' %}">
               <i class="bi bi-house me-1"></i>Dashboard
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% block nav_browse %}{% endblock %}" href="{% url 'items:item_list' %}">
+              <i class="bi bi-grid-3x3-gap me-1"></i>Browse Items
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% block nav_lost_user %}{% endblock %}" href="{% url 'items:lost_items' %}">
+              <i class="bi bi-question-circle me-1"></i>Lost Items
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% block nav_found_user %}{% endblock %}" href="{% url 'items:found_items' %}">
+              <i class="bi bi-bag-check me-1"></i>Found Items
+            </a>
+          </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+              <i class="bi bi-plus-circle me-1"></i>Report
+            </a>
+            <ul class="dropdown-menu shadow-sm">
+              <li>
+                <a class="dropdown-item" href="{% url 'items:report_lost' %}">
+                  <i class="bi bi-question-circle me-2 text-warning"></i>Report Lost Item
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{% url 'items:report_found' %}">
+                  <i class="bi bi-bag-check me-2 text-success"></i>Report Found Item
+                </a>
+              </li>
+            </ul>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% block nav_my_items %}{% endblock %}" href="{% url 'items:my_items' %}">
+              <i class="bi bi-clipboard2-check me-1"></i>My Reports
+
             </a>
           </li>
           {% endif %}
@@ -261,6 +327,9 @@
         </ul>
         {% else %}
         <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'items:item_list' %}"><i class="bi bi-grid-3x3-gap me-1"></i>Browse</a>
+          </li>
           <li class="nav-item">
             <a class="nav-link" href="{% url 'accounts:login' %}"><i class="bi bi-box-arrow-in-right me-1"></i>Login</a>
           </li>

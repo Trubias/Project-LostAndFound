@@ -8,6 +8,11 @@ from django.db.models import Q
 from .forms import RegisterForm, ProfileUpdateForm
 from .models import Profile
 
+# Lazy import to avoid circular issues — items app may not be ready at import time
+def _get_item_model():
+    from items.models import Item
+    return Item
+
 
 # ─────────────────────────────────────────────
 # Helpers
@@ -120,9 +125,25 @@ def dashboard_view(request):
     # Admins have their own separate dashboard and cannot access the user dashboard
     if is_admin_user(request.user):
         return redirect('accounts:admin_dashboard')
-    return render(request, 'dashboard/user_dashboard.html', {
+
+    # Item stats for this user
+    Item = _get_item_model()
+    my_items = Item.objects.filter(reporter=request.user)
+    active_items = Item.objects.filter(status=Item.STATUS_ACTIVE).select_related('category', 'reporter')
+    latest_lost_items = active_items.filter(item_type=Item.TYPE_LOST)[:4]
+    latest_found_items = active_items.filter(item_type=Item.TYPE_FOUND)[:4]
+
+    context = {
         'user': request.user,
-    })
+        'my_active_count': my_items.filter(status=Item.STATUS_ACTIVE).count(),
+        'my_archived_count': my_items.filter(status=Item.STATUS_ARCHIVED).count(),
+        'my_lost_count': my_items.filter(item_type=Item.TYPE_LOST).count(),
+        'my_found_count': my_items.filter(item_type=Item.TYPE_FOUND).count(),
+        'latest_lost_items': latest_lost_items,
+        'latest_found_items': latest_found_items,
+    }
+    return render(request, 'dashboard/user_dashboard.html', context)
+
 
 
 # ─────────────────────────────────────────────
@@ -150,12 +171,22 @@ def admin_dashboard_view(request):
         Q(is_superuser=True) | Q(profile__role=Profile.ROLE_ADMIN)
     ).count()
 
+    # Item stats for admin dashboard
+    Item = _get_item_model()
+    all_items = Item.objects.all()
+
     context = {
         'user': request.user,
         'profile': profile,
         'total_users': User.objects.count(),
         'total_admins': total_admins,
         'total_regular_users': total_regular_users,
+        # Item stats
+        'total_active_items': all_items.filter(status=Item.STATUS_ACTIVE).count(),
+        'total_archived_items': all_items.filter(status=Item.STATUS_ARCHIVED).count(),
+        'total_lost_items': all_items.filter(item_type=Item.TYPE_LOST).count(),
+        'total_found_items': all_items.filter(item_type=Item.TYPE_FOUND).count(),
+        'total_categories': __import__('items.models', fromlist=['Category']).Category.objects.count(),
     }
     return render(request, 'dashboard/admin_dashboard.html', context)
 

@@ -1,0 +1,320 @@
+{% extends 'base.html' %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block nav_items %}{% if page_mode == 'ALL' %}active{% endif %}{% endblock %}
+{% block nav_lost %}{% if page_mode == 'LOST' %}active{% endif %}{% endblock %}
+{% block nav_found %}{% if page_mode == 'FOUND' %}active{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Header -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3 animate-in">
+    <div>
+      <h1 class="h3 fw-bold mb-0">
+        <i class="bi {{ page_icon }} {{ page_color }} me-2"></i>{{ page_title }}
+      </h1>
+      <p class="text-muted small mb-0 mt-1">
+        {{ page_subtitle }}
+      </p>
+    </div>
+    {% if user.is_authenticated %}
+    <div class="d-flex gap-2">
+      <a href="{% url 'items:report_lost' %}" class="btn btn-warning btn-sm fw-semibold shadow-sm">
+        <i class="bi bi-question-circle me-1"></i>Report Lost
+      </a>
+      <a href="{% url 'items:report_found' %}" class="btn btn-success btn-sm fw-semibold shadow-sm">
+        <i class="bi bi-bag-check me-1"></i>Report Found
+      </a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Category Quick Browse Pills -->
+  {% if categories %}
+  <div class="mb-4 animate-in delay-1">
+    <div class="d-flex align-items-center gap-2 overflow-auto pb-2 flex-nowrap" style="scrollbar-width: thin;">
+      <span class="small fw-bold text-muted text-uppercase me-1 text-nowrap"><i class="bi bi-tags me-1"></i>Categories:</span>
+      <a href="{{ clear_url }}{% if selected_type %}?type={{ selected_type }}{% endif %}"
+         class="btn btn-sm rounded-pill text-nowrap {% if not selected_category %}btn-primary{% else %}btn-outline-secondary border-0 bg-white shadow-sm{% endif %}">
+        All
+      </a>
+      {% for cat in categories %}
+      <a href="{{ clear_url }}?category={{ cat.id }}{% if selected_type %}&type={{ selected_type }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+         class="btn btn-sm rounded-pill text-nowrap {% if selected_category == cat.id|stringformat:'s' %}btn-primary{% else %}btn-outline-secondary border-0 bg-white shadow-sm{% endif %}">
+        {{ cat.name }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Search & Filter Card -->
+  <div class="card shadow-sm border-0 mb-4 animate-in delay-1">
+    <div class="card-body p-4">
+      <form method="get" action="{{ clear_url }}" id="searchFilterForm">
+
+        <!-- Search Bar (Row 1) -->
+        <div class="mb-3">
+          <label class="form-label small fw-semibold text-muted mb-1" for="id_search">Search Keywords</label>
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-primary"></i></span>
+            <input type="text" name="q" value="{{ q }}" class="form-control border-start-0"
+                   placeholder="Search by title, description, location, or category..." id="id_search">
+            <button type="submit" class="btn btn-primary px-4 fw-semibold" id="searchBtn">
+              <i class="bi bi-search me-1"></i>Search
+            </button>
+          </div>
+        </div>
+
+        <!-- Filters (Row 2 & 3) -->
+        <div class="row g-3">
+          <!-- Type Filter -->
+          <div class="col-md-4 col-lg-3">
+            <label class="form-label small fw-semibold text-muted mb-1" for="id_type">Item Type</label>
+            <select name="type" class="form-select" id="id_type">
+              <option value="">All Types</option>
+              <option value="LOST" {% if selected_type == 'LOST' %}selected{% endif %}>Lost Items</option>
+              <option value="FOUND" {% if selected_type == 'FOUND' %}selected{% endif %}>Found Items</option>
+            </select>
+          </div>
+
+          <!-- Category Filter -->
+          <div class="col-md-4 col-lg-3">
+            <label class="form-label small fw-semibold text-muted mb-1" for="id_category">Category</label>
+            <select name="category" class="form-select" id="id_category">
+              <option value="">All Categories</option>
+              {% for cat in categories %}
+              <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:'s' %}selected{% endif %}>
+                {{ cat.name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Location Filter -->
+          <div class="col-md-4 col-lg-3">
+            <label class="form-label small fw-semibold text-muted mb-1" for="id_location">Location</label>
+            <div class="input-group">
+              <span class="input-group-text bg-white border-end-0"><i class="bi bi-geo-alt text-muted"></i></span>
+              <input type="text" name="location" value="{{ selected_location }}" class="form-control border-start-0"
+                     placeholder="e.g. Library, Gym..." id="id_location">
+            </div>
+          </div>
+
+          <!-- Sort Filter -->
+          <div class="col-md-4 col-lg-3">
+            <label class="form-label small fw-semibold text-muted mb-1" for="id_sort">Sort By</label>
+            <select name="sort" class="form-select" id="id_sort">
+              <option value="newest" {% if sort == 'newest' or not sort %}selected{% endif %}>Newest Reported</option>
+              <option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Oldest Reported</option>
+              <option value="date_newest" {% if sort == 'date_newest' %}selected{% endif %}>Newest Occurred</option>
+              <option value="date_oldest" {% if sort == 'date_oldest' %}selected{% endif %}>Oldest Occurred</option>
+              <option value="title_asc" {% if sort == 'title_asc' %}selected{% endif %}>Title A-Z</option>
+              <option value="title_desc" {% if sort == 'title_desc' %}selected{% endif %}>Title Z-A</option>
+            </select>
+          </div>
+
+          <!-- Date From -->
+          <div class="col-md-4 col-lg-3">
+            <label class="form-label small fw-semibold text-muted mb-1" for="id_date_from">Date From</label>
+            <input type="date" name="date_from" value="{{ date_from }}" class="form-control" id="id_date_from">
+          </div>
+
+          <!-- Date To -->
+          <div class="col-md-4 col-lg-3">
+            <label class="form-label small fw-semibold text-muted mb-1" for="id_date_to">Date To</label>
+            <input type="date" name="date_to" value="{{ date_to }}" class="form-control" id="id_date_to">
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="col-md-4 col-lg-6 d-flex align-items-end gap-2">
+            <button type="submit" class="btn btn-primary px-4 fw-semibold" id="applyFiltersBtn">
+              <i class="bi bi-funnel me-1"></i>Apply Filters
+            </button>
+            <a href="{{ clear_url }}" class="btn btn-outline-secondary px-3" id="clearFiltersBtn">
+              <i class="bi bi-arrow-counterclockwise me-1"></i>Clear Filters
+            </a>
+          </div>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- Active Filter Badges & Search Results Bar -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 animate-in delay-2">
+    <div>
+      <h2 class="h5 fw-bold mb-0">
+        Search Results
+      </h2>
+      <p class="text-muted small mb-0">
+        Showing <strong>{{ items.paginator.count }}</strong> result{% if items.paginator.count != 1 %}s{% endif %}
+        {% if q %} for: <strong class="text-primary">"{{ q }}"</strong>{% endif %}
+      </p>
+    </div>
+
+    <!-- Active Filters Badges with per-filter removal -->
+    {% if active_filters %}
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <span class="small text-muted fw-semibold me-1">Active filters:</span>
+      {% for f in active_filters %}
+      <span class="badge bg-light text-dark border px-2 py-1 d-inline-flex align-items-center gap-1 shadow-sm">
+        <span class="text-muted">{{ f.label }}:</span> <strong>{{ f.value }}</strong>
+        <a href="{{ f.remove_url }}" class="text-danger ms-1 text-decoration-none" title="Remove {{ f.label }}">
+          <i class="bi bi-x-circle-fill"></i>
+        </a>
+      </span>
+      {% endfor %}
+      <a href="{{ clear_url }}" class="btn btn-sm btn-link text-decoration-none text-danger ps-1">
+        Clear all
+      </a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Item Grid -->
+  {% if items %}
+  <div class="row g-4 mb-4">
+    {% for item in items %}
+    <div class="col-sm-6 col-lg-4 animate-in delay-{{ forloop.counter|default:1 }}">
+      <div class="card h-100 shadow-sm border-0 overflow-hidden">
+
+        <!-- Item Image / Placeholder -->
+        {% if item.image %}
+        <div style="height: 200px; overflow: hidden; background: #f8fafc; position: relative;">
+          <img src="{{ item.image.url }}" alt="{{ item.title }}"
+               class="w-100 h-100" style="object-fit: cover; transition: transform 0.3s ease;">
+          <span class="position-absolute top-0 start-0 m-3 badge {% if item.item_type == 'LOST' %}bg-warning text-dark{% else %}bg-success{% endif %} shadow-sm">
+            {% if item.item_type == 'LOST' %}<i class="bi bi-question-circle me-1"></i>LOST{% else %}<i class="bi bi-bag-check me-1"></i>FOUND{% endif %}
+          </span>
+        </div>
+        {% else %}
+        <div class="d-flex align-items-center justify-content-center bg-light"
+             style="height: 200px; position: relative;">
+          <i class="bi bi-image text-muted" style="font-size: 3.5rem; opacity: 0.4;"></i>
+          <span class="position-absolute top-0 start-0 m-3 badge {% if item.item_type == 'LOST' %}bg-warning text-dark{% else %}bg-success{% endif %} shadow-sm">
+            {% if item.item_type == 'LOST' %}<i class="bi bi-question-circle me-1"></i>LOST{% else %}<i class="bi bi-bag-check me-1"></i>FOUND{% endif %}
+          </span>
+        </div>
+        {% endif %}
+
+        <!-- Card Body -->
+        <div class="card-body d-flex flex-column p-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            {% if item.category %}
+            <span class="badge bg-light text-primary border fw-semibold">
+              <i class="bi bi-tag me-1"></i>{{ item.category.name }}
+            </span>
+            {% else %}
+            <span class="badge bg-light text-muted border">Uncategorized</span>
+            {% endif %}
+            <small class="text-muted" title="Date Reported">
+              <i class="bi bi-clock me-1"></i>{{ item.created_at|date:"M d, Y" }}
+            </small>
+          </div>
+
+          <h3 class="h6 fw-bold mb-2 text-dark text-truncate" title="{{ item.title }}">
+            {{ item.title }}
+          </h3>
+
+          <p class="text-muted small mb-3" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.5;">
+            {{ item.description }}
+          </p>
+
+          <div class="mt-auto pt-3 border-top">
+            <div class="d-flex align-items-center text-muted small mb-1">
+              <i class="bi bi-geo-alt-fill text-danger me-2"></i>
+              <span class="text-truncate">{{ item.location }}</span>
+            </div>
+            <div class="d-flex align-items-center text-muted small mb-3">
+              <i class="bi bi-calendar-event text-primary me-2"></i>
+              <span>Occurred: <strong>{{ item.date_occurred|date:"M d, Y" }}</strong></span>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between pt-1">
+              <small class="text-muted text-truncate" style="max-width: 130px;">
+                <i class="bi bi-person-circle me-1"></i>{{ item.reporter.get_full_name|default:item.reporter.username }}
+              </small>
+              <a href="{% url 'items:item_detail' item.pk %}" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold">
+                View Details <i class="bi bi-arrow-right ms-1"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Pagination -->
+  {% if items.has_other_pages %}
+  <nav aria-label="Page navigation" class="d-flex justify-content-center my-4 animate-in delay-3">
+    <ul class="pagination shadow-sm">
+      {% if items.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?{% if query_string_no_page %}{{ query_string_no_page }}&{% endif %}page={{ items.previous_page_number }}" aria-label="Previous">
+          <i class="bi bi-chevron-left me-1"></i>Previous
+        </a>
+      </li>
+      {% else %}
+      <li class="page-item disabled">
+        <span class="page-link"><i class="bi bi-chevron-left me-1"></i>Previous</span>
+      </li>
+      {% endif %}
+
+      {% for page_num in items.paginator.page_range %}
+        {% if page_num == items.number %}
+        <li class="page-item active" aria-current="page">
+          <span class="page-link">{{ page_num }}</span>
+        </li>
+        {% elif page_num > items.number|add:'-3' and page_num < items.number|add:'3' %}
+        <li class="page-item">
+          <a class="page-link" href="?{% if query_string_no_page %}{{ query_string_no_page }}&{% endif %}page={{ page_num }}">{{ page_num }}</a>
+        </li>
+        {% endif %}
+      {% endfor %}
+
+      {% if items.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?{% if query_string_no_page %}{{ query_string_no_page }}&{% endif %}page={{ items.next_page_number }}" aria-label="Next">
+          Next<i class="bi bi-chevron-right ms-1"></i>
+        </a>
+      </li>
+      {% else %}
+      <li class="page-item disabled">
+        <span class="page-link">Next<i class="bi bi-chevron-right ms-1"></i></span>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+
+  {% else %}
+  <!-- No Results Card -->
+  <div class="card shadow-sm border-0 text-center py-5 px-3 my-4 animate-in">
+    <div class="card-body">
+      <div class="mx-auto mb-3" style="width: 72px; height: 72px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center;">
+        <i class="bi bi-search text-muted fs-2"></i>
+      </div>
+      <h3 class="h5 fw-bold text-dark mb-2">No items found.</h3>
+      <p class="text-muted mb-4">Try changing your search or filters.</p>
+      <div class="d-flex justify-content-center gap-2">
+        <a href="{{ clear_url }}" class="btn btn-primary px-4 fw-semibold">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>Clear Filters
+        </a>
+        {% if user.is_authenticated %}
+        <a href="{% url 'items:report_lost' %}" class="btn btn-outline-warning">
+          <i class="bi bi-question-circle me-1"></i>Report Lost Item
+        </a>
+        <a href="{% url 'items:report_found' %}" class="btn btn-outline-success">
+          <i class="bi bi-bag-check me-1"></i>Report Found Item
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
