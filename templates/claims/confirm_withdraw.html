@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Withdraw Claim #{{ claim.pk }}{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 600px;">
+  <div class="card animate-in">
+    <div class="card-body p-5 text-center">
+      <div class="mb-3" style="font-size:3.5rem;">⚠️</div>
+      <h1 class="h4 fw-bold mb-2">Withdraw Claim?</h1>
+      <p class="text-muted mb-4">
+        Are you sure you want to withdraw your claim for
+        <strong>"{{ claim.item.title }}"</strong>?
+        <br>
+        <span class="small">This action cannot be undone. The claim will be marked as <strong>Withdrawn</strong>.</span>
+      </p>
+      <div class="d-flex gap-3 justify-content-center flex-wrap">
+        <a href="{% url 'claims:claim_detail' claim.pk %}" class="btn btn-outline-secondary px-4">
+          <i class="bi bi-arrow-left me-1"></i>Cancel
+        </a>
+        <form method="post" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger px-4">
+            <i class="bi bi-x-circle me-1"></i>Yes, Withdraw Claim
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

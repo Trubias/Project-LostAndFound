@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% block title %}Claim Item — {{ item.title }}{% endblock %}
+{% block nav_my_items %}active{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 760px;">
+
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'accounts:dashboard' %}">Dashboard</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'items:item_list' %}">Browse Items</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'items:item_detail' item.pk %}">{{ item.title|truncatechars:30 }}</a></li>
+      <li class="breadcrumb-item active">Submit Claim</li>
+    </ol>
+  </nav>
+
+  <!-- Page Header -->
+  <div class="d-flex align-items-center gap-3 mb-4 animate-in">
+    <div style="width:52px;height:52px;border-radius:14px;background:#fce4ec;display:flex;align-items:center;justify-content:center;">
+      <i class="bi bi-hand-index-thumb-fill fs-3" style="color:#c62828;"></i>
+    </div>
+    <div>
+      <h1 class="h4 fw-bold mb-0">Claim This Item</h1>
+      <p class="text-muted small mb-0">Submit a claim for: <strong>{{ item.title }}</strong></p>
+    </div>
+  </div>
+
+  <!-- Item Summary Card -->
+  <div class="card mb-4 animate-in delay-1">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-3">
+        {% if item.image %}
+        <img src="{{ item.image.url }}" alt="{{ item.title }}"
+             style="width:70px;height:70px;object-fit:cover;border-radius:12px;">
+        {% else %}
+        <div style="width:70px;height:70px;border-radius:12px;background:{% if item.is_lost %}#fff3e0{% else %}#e8f5e9{% endif %};display:flex;align-items:center;justify-content:center;font-size:2rem;">
+          <i class="bi bi-{% if item.is_lost %}question-circle{% else %}bag-check{% endif %}" style="color:{% if item.is_lost %}#e65100{% else %}#2e7d32{% endif %};"></i>
+        </div>
+        {% endif %}
+        <div>
+          <h2 class="h6 fw-bold mb-1">{{ item.title }}</h2>
+          <div class="d-flex flex-wrap gap-2">
+            <span class="badge bg-{% if item.is_lost %}warning text-dark{% else %}success{% endif %}">
+              {{ item.get_item_type_display }}
+            </span>
+            {% if item.category %}
+            <span class="badge bg-light text-dark border">{{ item.category.name }}</span>
+            {% endif %}
+            <span class="text-muted small"><i class="bi bi-geo-alt me-1"></i>{{ item.location }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Claim Form -->
+  <div class="card animate-in delay-2">
+    <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+      <h2 class="h6 fw-bold text-uppercase text-muted mb-1">
+        <i class="bi bi-pencil-square me-1"></i>Claim Details
+      </h2>
+      <p class="text-muted small mb-0">
+        Provide as much detail as possible. Only the true owner would know specific details about the item.
+      </p>
+    </div>
+    <div class="card-body p-4">
+      <!-- Important Notice -->
+      <div class="alert alert-info border-0 rounded-3 mb-4">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        <strong>What happens next?</strong> After submitting, the item's reporter will review your claim.
+        They may approve or reject it based on the information you provide. Be honest and specific.
+      </div>
+
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% for field in form %}
+        <div class="mb-4">
+          <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
+            {{ field.label }}
+            <span class="text-danger">*</span>
+          </label>
+          {% if field.help_text %}
+          <div class="text-muted small mb-2">{{ field.help_text }}</div>
+          {% endif %}
+          {{ field }}
+          {% if field.errors %}
+          <div class="text-danger small mt-1">
+            {% for error in field.errors %}
+            <div><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+
+        <hr class="my-4">
+
+        <div class="d-flex gap-3 justify-content-end flex-wrap">
+          <a href="{% url 'items:item_detail' item.pk %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Cancel
+          </a>
+          <button type="submit" class="btn btn-danger px-4">
+            <i class="bi bi-hand-index-thumb me-1"></i>Submit Claim
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

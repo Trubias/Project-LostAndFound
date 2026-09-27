@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Delete Category: {{ category.name }} — Admin Dashboard{% endblock %}
+{% block nav_admin %}active{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width: 580px;">
+
+  <div class="card border-0 shadow-sm rounded-4 overflow-hidden animate-in">
+    <div class="card-body p-4 p-md-5 text-center">
+      <div class="mx-auto mb-3 rounded-circle bg-danger bg-opacity-10 text-danger d-flex align-items-center justify-content-center" style="width: 72px; height: 72px;">
+        <i class="bi bi-trash-fill fs-1"></i>
+      </div>
+
+      <h1 class="h4 fw-bold mb-2">Delete Category?</h1>
+      <p class="text-muted mb-4">
+        Are you sure you want to permanently delete the category <strong>"{{ category.name }}"</strong>?
+        This action cannot be undone.
+      </p>
+
+      {% if item_count > 0 %}
+      <div class="alert alert-danger text-start small mb-4">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+        <strong>Warning:</strong> This category contains <strong>{{ item_count }}</strong> item(s).
+        Deleting this category is prevented to ensure existing reports remain safe.
+      </div>
+      <a href="{% url 'accounts:admin_categories' %}" class="btn btn-secondary px-4 rounded-pill">
+        Return to Categories
+      </a>
+      {% else %}
+      <form method="post" class="d-flex justify-content-center gap-3">
+        {% csrf_token %}
+        <a href="{% url 'accounts:admin_categories' %}" class="btn btn-outline-secondary px-4 rounded-pill">
+          Cancel
+        </a>
+        <button type="submit" class="btn btn-danger px-4 rounded-pill">
+          <i class="bi bi-trash me-1"></i>Yes, Delete Category
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

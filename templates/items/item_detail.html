@@ -134,6 +134,24 @@
             </button>
           </form>
           {% endif %}
+
+          <!-- Claim actions (Sprint 4) -->
+          {% if can_claim %}
+          <a href="{% url 'claims:submit_claim' item.pk %}" class="btn btn-danger btn-sm ms-auto">
+            <i class="bi bi-hand-index-thumb me-1"></i>Claim This Item
+          </a>
+          {% elif has_pending_claim %}
+          <span class="btn btn-outline-warning btn-sm ms-auto disabled">
+            <i class="bi bi-clock me-1"></i>Claim Submitted — Pending Review
+          </span>
+          {% endif %}
+
+          <!-- Item reporter / admin: view claims -->
+          {% if item_claims_count > 0 %}
+          <a href="{% url 'claims:item_claims' item.pk %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-hand-index-thumb me-1"></i>View Claims ({{ item_claims_count }})
+          </a>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -141,3 +159,4 @@
 
 </div>
 {% endblock %}
+

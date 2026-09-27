@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% block title %}Review Claim #{{ claim.pk }}{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 860px;">
+
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'items:my_items' %}">My Reports</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'claims:item_claims' claim.item.pk %}">Claims for {{ claim.item.title|truncatechars:25 }}</a></li>
+      <li class="breadcrumb-item active">Review Claim #{{ claim.pk }}</li>
+    </ol>
+  </nav>
+
+  <div class="d-flex align-items-center gap-3 mb-4 animate-in">
+    <div style="width:52px;height:52px;border-radius:14px;background:#e3f2fd;display:flex;align-items:center;justify-content:center;">
+      <i class="bi bi-check2-square fs-3 text-primary"></i>
+    </div>
+    <div>
+      <h1 class="h4 fw-bold mb-0">Review Claim #{{ claim.pk }}</h1>
+      <p class="text-muted small mb-0">
+        Submitted by <strong>{{ claim.claimant.get_full_name|default:claim.claimant.username }}</strong>
+        on {{ claim.created_at|date:"M d, Y" }}
+      </p>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Left: Claim Details -->
+    <div class="col-lg-7">
+
+      <!-- Claimant Message -->
+      <div class="card mb-4 animate-in delay-1">
+        <div class="card-header bg-white py-3">
+          <h2 class="h6 fw-bold mb-0">
+            <i class="bi bi-chat-quote me-2 text-primary"></i>Claimant's Message
+          </h2>
+        </div>
+        <div class="card-body">
+          <blockquote class="blockquote mb-0 fst-italic text-secondary">
+            "{{ claim.message }}"
+          </blockquote>
+        </div>
+      </div>
+
+      <!-- Proof -->
+      <div class="card mb-4 animate-in delay-2">
+        <div class="card-header bg-white py-3">
+          <h2 class="h6 fw-bold mb-0">
+            <i class="bi bi-shield-check me-2 text-success"></i>Proof of Ownership
+          </h2>
+        </div>
+        <div class="card-body">
+          <p class="mb-0">{{ claim.proof_description }}</p>
+        </div>
+      </div>
+
+      <!-- Warning if other pending claims -->
+      {% if other_pending_count > 0 %}
+      <div class="alert alert-warning animate-in delay-2">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <strong>Note:</strong> There are {{ other_pending_count }} other pending claim(s) for this item.
+        Approving this claim will automatically <strong>reject</strong> the others.
+      </div>
+      {% endif %}
+
+      <!-- Review Form -->
+      <div class="card animate-in delay-3">
+        <div class="card-header bg-white py-3">
+          <h2 class="h6 fw-bold mb-0">
+            <i class="bi bi-gavel me-2 text-danger"></i>Your Decision
+          </h2>
+        </div>
+        <div class="card-body">
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            <!-- Reviewer Notes -->
+            <div class="mb-4">
+              <label for="id_reviewer_notes" class="form-label fw-semibold">
+                Reviewer Notes <span class="text-muted fw-normal">(optional but recommended)</span>
+              </label>
+              <textarea name="reviewer_notes" id="id_reviewer_notes"
+                        class="form-control" rows="3"
+                        placeholder="Add a note explaining your decision...">{% if form.reviewer_notes.value %}{{ form.reviewer_notes.value }}{% endif %}</textarea>
+              {% if form.reviewer_notes.errors %}
+              <div class="text-danger small mt-1">{{ form.reviewer_notes.errors }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Action choice -->
+            <div class="mb-4">
+              <div class="fw-semibold mb-2">Decision <span class="text-danger">*</span></div>
+              {% if form.action.errors %}
+              <div class="text-danger small mb-2">{{ form.action.errors }}</div>
+              {% endif %}
+              <div class="d-flex flex-wrap gap-3">
+                <div class="form-check p-3 border rounded-3 flex-fill"
+                     style="background:#e8f5e9;cursor:pointer;"
+                     onclick="document.getElementById('action_approve').checked=true;this.parentNode.querySelectorAll('.form-check').forEach(x=>x.style.borderColor='');this.style.borderColor='#2e7d32';">
+                  <input class="form-check-input" type="radio" name="action"
+                         id="action_approve" value="approve">
+                  <label class="form-check-label fw-semibold text-success" for="action_approve" style="cursor:pointer;">
+                    <i class="bi bi-check-circle-fill me-2"></i>Approve
+                    <div class="fw-normal text-muted small">Confirm ownership and archive the item.</div>
+                  </label>
+                </div>
+                <div class="form-check p-3 border rounded-3 flex-fill"
+                     style="background:#ffebee;cursor:pointer;"
+                     onclick="document.getElementById('action_reject').checked=true;this.parentNode.querySelectorAll('.form-check').forEach(x=>x.style.borderColor='');this.style.borderColor='#c62828';">
+                  <input class="form-check-input" type="radio" name="action"
+                         id="action_reject" value="reject">
+                  <label class="form-check-label fw-semibold text-danger" for="action_reject" style="cursor:pointer;">
+                    <i class="bi bi-x-circle-fill me-2"></i>Reject
+                    <div class="fw-normal text-muted small">Deny this claim.</div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex gap-3 justify-content-end flex-wrap">
+              <a href="{% url 'claims:claim_detail' claim.pk %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Cancel
+              </a>
+              <button type="submit" class="btn btn-primary px-4">
+                <i class="bi bi-send me-1"></i>Submit Decision
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: Item & Claimant Info -->
+    <div class="col-lg-5">
+      <!-- Item Info -->
+      <div class="card mb-4 animate-in delay-1">
+        <div class="card-header bg-white py-3">
+          <h2 class="h6 fw-bold mb-0"><i class="bi bi-box-seam me-2 text-warning"></i>Item</h2>
+        </div>
+        <div class="card-body">
+          {% if claim.item.image %}
+          <img src="{{ claim.item.image.url }}" alt="{{ claim.item.title }}"
+               class="w-100 rounded-3 mb-3" style="height:140px;object-fit:cover;">
+          {% endif %}
+          <h3 class="h6 fw-bold mb-1">
+            <a href="{% url 'items:item_detail' claim.item.pk %}" class="text-decoration-none text-dark">
+              {{ claim.item.title }}
+            </a>
+          </h3>
+          <p class="text-muted small mb-2">{{ claim.item.description|truncatewords:20 }}</p>
+          <div class="d-flex flex-wrap gap-1 mb-2">
+            <span class="badge bg-{% if claim.item.is_lost %}warning text-dark{% else %}success{% endif %}">
+              {{ claim.item.get_item_type_display }}
+            </span>
+          </div>
+          <div class="text-muted small"><i class="bi bi-geo-alt me-1"></i>{{ claim.item.location }}</div>
+        </div>
+      </div>
+
+      <!-- Claimant Info -->
+      <div class="card animate-in delay-2">
+        <div class="card-header bg-white py-3">
+          <h2 class="h6 fw-bold mb-0"><i class="bi bi-person me-2"></i>Claimant</h2>
+        </div>
+        <div class="card-body">
+          <div class="fw-semibold">{{ claim.claimant.get_full_name|default:claim.claimant.username }}</div>
+          <div class="text-muted small">@{{ claim.claimant.username }}</div>
+          {% if claim.claimant.email %}
+          <div class="text-muted small"><i class="bi bi-envelope me-1"></i>{{ claim.claimant.email }}</div>
+          {% endif %}
+          <div class="text-muted small mt-2">
+            <i class="bi bi-calendar me-1"></i>Claim submitted {{ claim.created_at|date:"M d, Y H:i" }}
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

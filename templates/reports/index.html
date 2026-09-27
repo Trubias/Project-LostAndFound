@@ -1,0 +1,404 @@
+{% extends "base.html" %}
+
+{% block title %}System Reports & Analytics{% endblock %}
+{% block nav_admin_reports %}active{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Header & Actions -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div>
+      <h1 class="h3 fw-bold mb-1 text-dark">
+        <i class="bi bi-file-earmark-bar-graph text-primary me-2"></i>System Reports &amp; Analytics
+      </h1>
+      <p class="text-muted small mb-0">
+        Generated on: <strong>{{ generated_at|date:"F d, Y - H:i:s e" }}</strong> | Administrator: <strong>{{ request.user.username }}</strong>
+      </p>
+    </div>
+    <div class="d-flex gap-2 mt-3 mt-md-0 no-print">
+      <button onclick="window.print()" class="btn btn-outline-secondary">
+        <i class="bi bi-printer me-1"></i>Print Report
+      </button>
+      <div class="dropdown">
+        <button class="btn btn-primary dropdown-toggle shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="bi bi-download me-1"></i>Export Data (CSV)
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow">
+          <li><h6 class="dropdown-header">Available CSV Reports</h6></li>
+          <li><a class="dropdown-item" href="{% url 'reports:export_items' %}"><i class="bi bi-box-seam me-2 text-primary"></i>Items Report (CSV)</a></li>
+          <li><a class="dropdown-item" href="{% url 'reports:export_claims' %}"><i class="bi bi-hand-index-thumb me-2 text-warning"></i>Claims Report (CSV)</a></li>
+          <li><a class="dropdown-item" href="{% url 'reports:export_users' %}"><i class="bi bi-people me-2 text-info"></i>Users Directory (CSV)</a></li>
+          <li><a class="dropdown-item" href="{% url 'reports:export_categories' %}"><i class="bi bi-tags me-2 text-success"></i>Categories Report (CSV)</a></li>
+          <li><a class="dropdown-item" href="{% url 'reports:export_matches' %}"><i class="bi bi-shuffle me-2 text-danger"></i>Matches Report (CSV)</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Navigation Toolbar -->
+  <div class="no-print">
+    {% with active_tab='reports' %}
+      {% include 'admin_dashboard/sidebar.html' %}
+    {% endwith %}
+  </div>
+
+  <!-- Print Only Official Header -->
+  <div class="d-none d-print-block mb-4 text-center">
+    <h2>School Lost &amp; Found Management System</h2>
+    <h4>Administrative Summary &amp; Analytics Report</h4>
+    <p class="text-muted">Report Generated: {{ generated_at|date:"F d, Y H:i:s" }} | Admin: {{ request.user.username }}</p>
+    <hr>
+  </div>
+
+  <!-- Row 1: KPI Stat Cards -->
+  <div class="row g-3 mb-4">
+    <!-- Total Items -->
+    <div class="col-sm-6 col-xl-3">
+      <div class="card h-100 p-3 shadow-sm border-0 border-start border-4 border-primary">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <span class="text-muted small fw-semibold text-uppercase">Total Items</span>
+            <h2 class="fw-bold mb-0 mt-1 text-primary">{{ total_items }}</h2>
+            <div class="text-muted small mt-1">
+              <span class="text-success fw-medium">{{ active_items }} Active</span> &bull; 
+              <span class="text-secondary">{{ archived_items }} Archived</span>
+            </div>
+          </div>
+          <div class="rounded-circle bg-primary bg-opacity-10 p-3 text-primary">
+            <i class="bi bi-box-seam fs-3"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lost vs Found -->
+    <div class="col-sm-6 col-xl-3">
+      <div class="card h-100 p-3 shadow-sm border-0 border-start border-4 border-warning">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <span class="text-muted small fw-semibold text-uppercase">Lost vs Found</span>
+            <h2 class="fw-bold mb-0 mt-1 text-warning">{{ total_lost }} <span class="fs-6 text-muted fw-normal">/</span> {{ total_found }}</h2>
+            <div class="text-muted small mt-1">
+              <span>{{ active_lost }} Active Lost</span> &bull; 
+              <span>{{ active_found }} Active Found</span>
+            </div>
+          </div>
+          <div class="rounded-circle bg-warning bg-opacity-10 p-3 text-warning">
+            <i class="bi bi-arrow-left-right fs-3"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Claims -->
+    <div class="col-sm-6 col-xl-3">
+      <div class="card h-100 p-3 shadow-sm border-0 border-start border-4 border-info">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <span class="text-muted small fw-semibold text-uppercase">Total Claims</span>
+            <h2 class="fw-bold mb-0 mt-1 text-info">{{ total_claims }}</h2>
+            <div class="text-muted small mt-1">
+              <span class="badge bg-warning text-dark">{{ pending_claims }} Pending</span>
+              <span class="badge bg-success ms-1">{{ approved_claims }} Appr</span>
+            </div>
+          </div>
+          <div class="rounded-circle bg-info bg-opacity-10 p-3 text-info">
+            <i class="bi bi-hand-index-thumb fs-3"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Matches -->
+    <div class="col-sm-6 col-xl-3">
+      <div class="card h-100 p-3 shadow-sm border-0 border-start border-4 border-success">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <span class="text-muted small fw-semibold text-uppercase">Potential Matches</span>
+            <h2 class="fw-bold mb-0 mt-1 text-success">{{ total_matches }}</h2>
+            <div class="text-muted small mt-1">
+              <span>{{ confirmed_matches }} Confirmed &bull; Avg {{ avg_score }}%</span>
+            </div>
+          </div>
+          <div class="rounded-circle bg-success bg-opacity-10 p-3 text-success">
+            <i class="bi bi-shuffle fs-3"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Two Columns: Lost vs Found Breakdown & Claims Breakdown -->
+  <div class="row g-4 mb-4">
+    <!-- Item Status & Type Distribution -->
+    <div class="col-lg-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+          <h5 class="fw-bold mb-0"><i class="bi bi-pie-chart text-primary me-2"></i>Item Inventory Distribution</h5>
+          <span class="badge bg-light text-dark border">{{ total_items }} Total Items</span>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Category / Segment</th>
+                  <th class="text-center">Active</th>
+                  <th class="text-center">Archived</th>
+                  <th class="text-end">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="badge bg-warning text-dark me-2">Lost</span>Lost Items</td>
+                  <td class="text-center fw-semibold text-success">{{ active_lost }}</td>
+                  <td class="text-center text-muted">{{ archived_lost }}</td>
+                  <td class="text-end fw-bold">{{ total_lost }}</td>
+                </tr>
+                <tr>
+                  <td><span class="badge bg-success me-2">Found</span>Found Items</td>
+                  <td class="text-center fw-semibold text-success">{{ active_found }}</td>
+                  <td class="text-center text-muted">{{ archived_found }}</td>
+                  <td class="text-end fw-bold">{{ total_found }}</td>
+                </tr>
+                <tr class="table-light fw-bold">
+                  <td>Total Items Registered</td>
+                  <td class="text-center text-success">{{ active_items }}</td>
+                  <td class="text-center text-muted">{{ archived_items }}</td>
+                  <td class="text-end text-primary">{{ total_items }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Claims Resolution Distribution -->
+    <div class="col-lg-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+          <h5 class="fw-bold mb-0"><i class="bi bi-shield-check text-warning me-2"></i>Claims Status Breakdown</h5>
+          <span class="badge bg-light text-dark border">{{ total_claims }} Total Claims</span>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Claim Status</th>
+                  <th class="text-center">Count</th>
+                  <th class="text-end">Share (%)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="badge bg-warning text-dark me-2"><i class="bi bi-clock-history me-1"></i>Pending Review</span></td>
+                  <td class="text-center fw-bold">{{ pending_claims }}</td>
+                  <td class="text-end text-muted">
+                    {% if total_claims > 0 %}{% widthratio pending_claims total_claims 100 %}%{% else %}0%{% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td><span class="badge bg-success me-2"><i class="bi bi-check-circle me-1"></i>Approved</span></td>
+                  <td class="text-center fw-bold text-success">{{ approved_claims }}</td>
+                  <td class="text-end text-muted">
+                    {% if total_claims > 0 %}{% widthratio approved_claims total_claims 100 %}%{% else %}0%{% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td><span class="badge bg-danger me-2"><i class="bi bi-x-circle me-1"></i>Rejected</span></td>
+                  <td class="text-center fw-bold text-danger">{{ rejected_claims }}</td>
+                  <td class="text-end text-muted">
+                    {% if total_claims > 0 %}{% widthratio rejected_claims total_claims 100 %}%{% else %}0%{% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td><span class="badge bg-secondary me-2"><i class="bi bi-arrow-counterclockwise me-1"></i>Withdrawn</span></td>
+                  <td class="text-center fw-bold text-muted">{{ withdrawn_claims }}</td>
+                  <td class="text-end text-muted">
+                    {% if total_claims > 0 %}{% widthratio withdrawn_claims total_claims 100 %}%{% else %}0%{% endif %}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3: Category Distribution -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+      <h5 class="fw-bold mb-0"><i class="bi bi-tags text-success me-2"></i>Reports by Category</h5>
+      <span class="text-muted small">Real database category aggregates</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-4">Category</th>
+              <th>Description</th>
+              <th class="text-center">Lost Items</th>
+              <th class="text-center">Found Items</th>
+              <th class="text-end pe-4">Total Reports</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for cat in categories %}
+            <tr>
+              <td class="ps-4 fw-semibold">{{ cat.name }}</td>
+              <td class="text-muted small">{{ cat.description|default:"—"|truncatechars:60 }}</td>
+              <td class="text-center text-warning fw-semibold">{{ cat.lost_count }}</td>
+              <td class="text-center text-success fw-semibold">{{ cat.found_count }}</td>
+              <td class="text-end pe-4 fw-bold">{{ cat.item_count }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="text-center text-muted py-4">No categories configured in system.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 4: Top Locations and Match Performance -->
+  <div class="row g-4 mb-4">
+    <!-- Top Locations -->
+    <div class="col-lg-7">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+          <h5 class="fw-bold mb-0"><i class="bi bi-geo-alt text-danger me-2"></i>Top Report Locations</h5>
+          <span class="text-muted small">Top 15 locations</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th class="ps-3">Location</th>
+                  <th class="text-center">Lost</th>
+                  <th class="text-center">Found</th>
+                  <th class="text-end pe-3">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for loc in locations %}
+                <tr>
+                  <td class="ps-3 fw-medium">{{ loc.location }}</td>
+                  <td class="text-center text-warning fw-semibold">{{ loc.lost_count }}</td>
+                  <td class="text-center text-success fw-semibold">{{ loc.found_count }}</td>
+                  <td class="text-end pe-3 fw-bold">{{ loc.total }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="4" class="text-center text-muted py-4">No location data recorded yet.</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Match Statistics & User Directory Stats -->
+    <div class="col-lg-5">
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-0">
+          <h5 class="fw-bold mb-0"><i class="bi bi-shuffle text-primary me-2"></i>Matching Engine Metrics</h5>
+        </div>
+        <div class="card-body">
+          <ul class="list-group list-group-flush">
+            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+              <span>Total Match Pairs Discovered</span>
+              <span class="badge bg-primary rounded-pill">{{ total_matches }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+              <span>Pending Review</span>
+              <span class="badge bg-warning text-dark rounded-pill">{{ pending_matches }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+              <span>Confirmed Matches</span>
+              <span class="badge bg-success rounded-pill">{{ confirmed_matches }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+              <span>Dismissed Matches</span>
+              <span class="badge bg-secondary rounded-pill">{{ dismissed_matches }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+              <span>Average Match Confidence Score</span>
+              <span class="fw-bold text-dark">{{ avg_score }} / 100</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-header bg-white py-3 border-0">
+          <h5 class="fw-bold mb-0"><i class="bi bi-people text-info me-2"></i>User Base Summary</h5>
+        </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-around text-center py-2">
+            <div>
+              <div class="h3 fw-bold mb-0 text-primary">{{ total_users }}</div>
+              <small class="text-muted">Total Users</small>
+            </div>
+            <div class="border-end"></div>
+            <div>
+              <div class="h3 fw-bold mb-0 text-success">{{ active_users }}</div>
+              <small class="text-muted">Active Users</small>
+            </div>
+            <div class="border-end"></div>
+            <div>
+              <div class="h3 fw-bold mb-0 text-info">{{ admin_users }}</div>
+              <small class="text-muted">Admins</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 5: Quick CSV Export Cards -->
+  <div class="card shadow-sm no-print mb-4 border-0 bg-light">
+    <div class="card-body p-4">
+      <h5 class="fw-bold mb-3"><i class="bi bi-cloud-arrow-down text-primary me-2"></i>One-Click Administrative CSV Exports</h5>
+      <p class="text-muted small mb-3">Download comprehensive real-time CSV spreadsheets for reporting, offline auditing, or compliance records.</p>
+      <div class="row g-2">
+        <div class="col-md-auto">
+          <a href="{% url 'reports:export_items' %}" class="btn btn-outline-primary btn-sm w-100">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i>Export Items CSV
+          </a>
+        </div>
+        <div class="col-md-auto">
+          <a href="{% url 'reports:export_claims' %}" class="btn btn-outline-warning text-dark btn-sm w-100">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i>Export Claims CSV
+          </a>
+        </div>
+        <div class="col-md-auto">
+          <a href="{% url 'reports:export_users' %}" class="btn btn-outline-info text-dark btn-sm w-100">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i>Export Users CSV
+          </a>
+        </div>
+        <div class="col-md-auto">
+          <a href="{% url 'reports:export_categories' %}" class="btn btn-outline-success btn-sm w-100">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i>Export Categories CSV
+          </a>
+        </div>
+        <div class="col-md-auto">
+          <a href="{% url 'reports:export_matches' %}" class="btn btn-outline-danger btn-sm w-100">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i>Export Matches CSV
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

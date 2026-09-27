@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% block title %}Possible Matches — Lost & Found{% endblock %}
+{% block nav_matches %}active text-warning{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Header -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3 animate-in">
+    <div>
+      <h1 class="h3 fw-bold mb-1">
+        <i class="bi bi-shuffle text-warning me-2"></i>Item Matches
+        {% if total_pending > 0 %}
+        <span class="badge bg-warning text-dark rounded-pill fs-6 align-middle ms-1">{{ total_pending }} pending review</span>
+        {% endif %}
+      </h1>
+      <p class="text-muted small mb-0">Rule-based suggestions matching your reported lost and found items with opposite reports.</p>
+    </div>
+  </div>
+
+  <!-- Filter tabs -->
+  <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white">
+    <div class="card-body p-2 p-md-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <ul class="nav nav-pills gap-1">
+        <li class="nav-item">
+          <a class="nav-link py-2 px-3 rounded-pill {% if not status_filter %}active bg-primary text-white{% else %}text-secondary{% endif %}" href="{% url 'matches:list' %}">
+            All Matches
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link py-2 px-3 rounded-pill {% if status_filter == 'PENDING' %}active bg-warning text-dark{% else %}text-secondary{% endif %}" href="{% url 'matches:list' %}?status=PENDING">
+            Pending {% if total_pending > 0 %}<span class="badge bg-danger rounded-pill ms-1">{{ total_pending }}</span>{% endif %}
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link py-2 px-3 rounded-pill {% if status_filter == 'CONFIRMED' %}active bg-success text-white{% else %}text-secondary{% endif %}" href="{% url 'matches:list' %}?status=CONFIRMED">
+            Confirmed
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link py-2 px-3 rounded-pill {% if status_filter == 'DISMISSED' %}active bg-secondary text-white{% else %}text-secondary{% endif %}" href="{% url 'matches:list' %}?status=DISMISSED">
+            Dismissed
+          </a>
+        </li>
+      </ul>
+      <span class="text-muted small">Showing {{ matches.paginator.count }} match{{ matches.paginator.count|pluralize }}</span>
+    </div>
+  </div>
+
+  <!-- Matches Grid -->
+  {% if matches %}
+  <div class="row g-4 mb-4">
+    {% for match in matches %}
+    <div class="col-md-6 col-xl-6 animate-in">
+      <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
+        <!-- Card Header with Score & Status -->
+        <div class="card-header bg-white border-0 pt-3 px-3 pb-0 d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-{% if match.score >= 80 %}success{% elif match.score >= 60 %}primary{% else %}warning text-dark{% endif %} rounded-pill px-3 py-2 fw-bold" style="font-size: 0.85rem;">
+              <i class="bi bi-speedometer2 me-1"></i>{{ match.score }}% Match
+            </span>
+            <span class="badge bg-{% if match.status == 'CONFIRMED' %}success{% elif match.status == 'DISMISSED' %}secondary{% else %}warning text-dark{% endif %} rounded-pill">
+              {{ match.get_status_display }}
+            </span>
+          </div>
+          <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ match.created_at|date:"M d, Y" }}</small>
+        </div>
+
+        <div class="card-body p-3">
+          <!-- Comparison Row -->
+          <div class="row g-2 mb-3">
+            <!-- Lost Item -->
+            <div class="col-6">
+              <div class="p-3 bg-light rounded-3 h-100 border-start border-3 border-warning">
+                <span class="badge bg-warning text-dark rounded-pill mb-1" style="font-size: 0.7rem;">LOST ITEM</span>
+                <div class="fw-bold text-truncate" title="{{ match.lost_item.title }}">{{ match.lost_item.title }}</div>
+                <div class="text-muted small mt-1"><i class="bi bi-geo-alt me-1"></i>{{ match.lost_item.location|truncatechars:20 }}</div>
+                <div class="text-muted small"><i class="bi bi-calendar me-1"></i>{{ match.lost_item.date_occurred|date:"M d" }}</div>
+                <div class="text-muted small"><i class="bi bi-tag me-1"></i>{{ match.lost_item.category.name|default:"Uncategorized" }}</div>
+                {% if match.lost_item.reporter == user %}
+                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill mt-2" style="font-size: 0.68rem;">Your Report</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Found Item -->
+            <div class="col-6">
+              <div class="p-3 bg-light rounded-3 h-100 border-start border-3 border-success">
+                <span class="badge bg-success rounded-pill mb-1" style="font-size: 0.7rem;">FOUND ITEM</span>
+                <div class="fw-bold text-truncate" title="{{ match.found_item.title }}">{{ match.found_item.title }}</div>
+                <div class="text-muted small mt-1"><i class="bi bi-geo-alt me-1"></i>{{ match.found_item.location|truncatechars:20 }}</div>
+                <div class="text-muted small"><i class="bi bi-calendar me-1"></i>{{ match.found_item.date_occurred|date:"M d" }}</div>
+                <div class="text-muted small"><i class="bi bi-tag me-1"></i>{{ match.found_item.category.name|default:"Uncategorized" }}</div>
+                {% if match.found_item.reporter == user %}
+                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill mt-2" style="font-size: 0.68rem;">Your Report</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Score Progress -->
+          <div class="mb-2">
+            <div class="d-flex justify-content-between small text-muted mb-1">
+              <span>Score Breakdown: Cat (+{{ match.score_category }}) Loc (+{{ match.score_location }}) Title (+{{ match.score_title }})</span>
+              <span class="fw-bold">{{ match.score }}/100</span>
+            </div>
+            <div class="progress" style="height: 6px;">
+              <div class="progress-bar bg-{% if match.score >= 80 %}success{% elif match.score >= 60 %}primary{% else %}warning{% endif %}" style="width: {{ match.score }}%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card Footer -->
+        <div class="card-footer bg-light border-0 p-3 d-flex justify-content-between align-items-center">
+          <a href="{% url 'matches:detail' match.pk %}" class="btn btn-primary btn-sm rounded-pill px-3">
+            <i class="bi bi-eye me-1"></i>View Comparison
+          </a>
+          {% if match.is_pending %}
+          <div class="d-flex gap-1">
+            <form method="post" action="{% url 'matches:confirm' match.pk %}" class="d-inline">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-outline-success btn-sm rounded-pill px-3" title="Confirm this match">
+                <i class="bi bi-check2 me-1"></i>Confirm
+              </button>
+            </form>
+            <form method="post" action="{% url 'matches:dismiss' match.pk %}" class="d-inline" onsubmit="return confirm('Dismiss this suggestion?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-outline-secondary btn-sm rounded-pill px-2" title="Dismiss">
+                <i class="bi bi-x"></i>
+              </button>
+            </form>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card border-0 shadow-sm rounded-4 p-5 text-center">
+    <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center mb-3 mx-auto" style="width: 80px; height: 80px;">
+      <i class="bi bi-shuffle text-muted fs-1"></i>
+    </div>
+    <h5 class="fw-bold text-dark">No Matches Found</h5>
+    <p class="text-muted small">As more lost and found items are reported with matching details, suggestions will appear here.</p>
+  </div>
+  {% endif %}
+
+  <!-- Pagination -->
+  {% if page_obj.has_other_pages %}
+  <nav aria-label="Matches pagination">
+    <ul class="pagination justify-content-center">
+      {% if page_obj.has_previous %}
+      <li class="page-item">
+        <a class="page-link rounded-pill px-3 me-1" href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}">&laquo; Previous</a>
+      </li>
+      {% endif %}
+      <li class="page-item disabled">
+        <span class="page-link rounded-pill px-3 border-0 bg-transparent text-muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+      </li>
+      {% if page_obj.has_next %}
+      <li class="page-item">
+        <a class="page-link rounded-pill px-3 ms-1" href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}">Next &raquo;</a>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+
+</div>
+{% endblock %}

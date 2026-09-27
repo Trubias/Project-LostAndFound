@@ -154,22 +154,87 @@
         </div>
       </div>
     </div>
-    <!-- Claims placeholder -->
+    <!-- Notifications (Sprint 6) -->
+    <div class="col-md-6 col-lg-4 animate-in delay-3">
+      <div class="card p-4 h-100">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div style="width:48px;height:48px;border-radius:12px;background:#e0f2fe;display:flex;align-items:center;justify-content:center;">
+            <i class="bi bi-bell-fill fs-4 text-info"></i>
+          </div>
+          <div>
+            <h3 class="h6 fw-bold mb-0">Notifications</h3>
+            <div class="mt-1">
+              {% if unread_notifications_count > 0 %}
+              <span class="badge bg-danger">{{ unread_notifications_count }} Unread</span>
+              {% else %}
+              <span class="badge bg-light text-muted border">All caught up</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <p class="text-muted small mb-3">Stay updated with claim activities, match discoveries, and status changes.</p>
+        <a href="{% url 'notifications:list' %}" class="btn btn-outline-info btn-sm mt-auto">
+          <i class="bi bi-bell me-1"></i>View Notifications
+        </a>
+      </div>
+    </div>
+    <!-- Possible Matches (Sprint 6) -->
+    <div class="col-md-6 col-lg-4 animate-in delay-3">
+      <div class="card p-4 h-100">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div style="width:48px;height:48px;border-radius:12px;background:#fff8e1;display:flex;align-items:center;justify-content:center;">
+            <i class="bi bi-shuffle fs-4 text-warning"></i>
+          </div>
+          <div>
+            <h3 class="h6 fw-bold mb-0">Possible Matches</h3>
+            <div class="mt-1">
+              {% if possible_matches_count > 0 %}
+              <span class="badge bg-warning text-dark">{{ possible_matches_count }} Pending</span>
+              {% else %}
+              <span class="badge bg-light text-muted border">No matches pending</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <p class="text-muted small mb-3">Discover automated suggestions pairing your lost/found items with opposite reports.</p>
+        <a href="{% url 'matches:list' %}" class="btn btn-outline-warning text-dark btn-sm mt-auto">
+          <i class="bi bi-shuffle me-1"></i>View Matches
+        </a>
+      </div>
+    </div>
+    <!-- My Claims (Sprint 4) -->
     <div class="col-md-6 col-lg-4 animate-in delay-4">
-      <div class="card placeholder-card p-4 h-100">
+      <div class="card p-4 h-100">
         <div class="d-flex align-items-center gap-3 mb-3">
           <div style="width:48px;height:48px;border-radius:12px;background:#fce4ec;display:flex;align-items:center;justify-content:center;">
             <i class="bi bi-hand-index-thumb-fill fs-4" style="color:#c62828;"></i>
           </div>
           <div>
             <h3 class="h6 fw-bold mb-0">My Claims</h3>
-            <span class="badge bg-secondary placeholder-badge">Coming in Sprint 4</span>
+            <div class="d-flex gap-1 mt-1 flex-wrap">
+              {% if my_claims_pending > 0 %}
+              <span class="badge bg-warning text-dark">{{ my_claims_pending }} Pending</span>
+              {% endif %}
+              {% if my_claims_approved > 0 %}
+              <span class="badge bg-success">{{ my_claims_approved }} Approved</span>
+              {% endif %}
+              {% if my_claims_rejected > 0 %}
+              <span class="badge bg-danger">{{ my_claims_rejected }} Rejected</span>
+              {% endif %}
+              {% if my_claims_total == 0 %}
+              <span class="badge bg-light text-muted border">No claims yet</span>
+              {% endif %}
+            </div>
           </div>
         </div>
-        <p class="text-muted small mb-0">Claim an item that belongs to you — verification process coming soon.</p>
+        <p class="text-muted small mb-3">Track all your claim submissions and their review status.</p>
+        <a href="{% url 'claims:my_claims' %}" class="btn btn-outline-danger btn-sm mt-auto">
+          <i class="bi bi-list-check me-1"></i>View My Claims
+        </a>
       </div>
     </div>
   </div>
+
 
   <!-- Recent Lost & Found Feed -->
   <div class="row g-4 mt-2">

@@ -9,6 +9,8 @@ from django.urls import reverse
 from accounts.models import Profile
 from .models import Item, Category
 from .forms import ItemForm, CategoryForm
+from notifications import services as notif_svc
+from matches import engine as match_engine
 
 
 # ─────────────────────────────────────────────
@@ -255,6 +257,10 @@ def item_detail_view(request, pk):
     can_edit = False
     can_archive = False
     can_restore = False
+    can_claim = False
+    has_pending_claim = False
+    user_claim = None
+    item_claims_count = 0
 
     if request.user.is_authenticated:
         is_owner = item.reporter == request.user
@@ -265,12 +271,34 @@ def item_detail_view(request, pk):
         if item.is_archived():
             can_restore = is_owner or is_admin
 
+        # Claim logic
+        if item.is_active() and not is_owner and not is_admin:
+            from claims.models import Claim as ClaimModel
+            existing = ClaimModel.objects.filter(
+                item=item, claimant=request.user
+            ).order_by('-created_at').first()
+            if existing and existing.is_pending():
+                has_pending_claim = True
+                user_claim = existing
+            elif not existing or existing.status in [ClaimModel.STATUS_REJECTED, ClaimModel.STATUS_WITHDRAWN]:
+                can_claim = True
+
+        # Count claims for item reporter / admin
+        if is_owner or is_admin:
+            from claims.models import Claim as ClaimModel
+            item_claims_count = ClaimModel.objects.filter(item=item).count()
+
     return render(request, 'items/item_detail.html', {
         'item': item,
         'can_edit': can_edit,
         'can_archive': can_archive,
         'can_restore': can_restore,
+        'can_claim': can_claim,
+        'has_pending_claim': has_pending_claim,
+        'user_claim': user_claim,
+        'item_claims_count': item_claims_count,
     })
+
 
 
 # ─────────────────────────────────────────────
@@ -287,6 +315,8 @@ def report_lost_view(request):
             item.reporter = request.user
             item.status = Item.STATUS_ACTIVE
             item.save()
+            # Run the matching engine and send match notifications for new matches
+            _run_matching_for_item(item)
             messages.success(request, f'Lost item "{item.title}" has been reported successfully.')
             return redirect('items:my_items')
     else:
@@ -317,6 +347,8 @@ def report_found_view(request):
             item.reporter = request.user
             item.status = Item.STATUS_ACTIVE
             item.save()
+            # Run the matching engine and send match notifications for new matches
+            _run_matching_for_item(item)
             messages.success(request, f'Found item "{item.title}" has been reported successfully.')
             return redirect('items:my_items')
     else:
@@ -402,6 +434,8 @@ def archive_item_view(request, pk):
     if request.method == 'POST':
         item.status = Item.STATUS_ARCHIVED
         item.save()
+        # Notify reporter if admin archived it
+        notif_svc.notify_item_archived(item, triggering_user=request.user)
         messages.success(request, f'Item "{item.title}" has been archived.')
         if is_admin_user(request.user):
             return redirect('items:item_list')
@@ -425,6 +459,10 @@ def restore_item_view(request, pk):
     if request.method == 'POST':
         item.status = Item.STATUS_ACTIVE
         item.save()
+        # Notify reporter if admin restored it
+        notif_svc.notify_item_restored(item, triggering_user=request.user)
+        # Re-run matching since the item is active again
+        _run_matching_for_item(item)
         messages.success(request, f'Item "{item.title}" has been restored to active.')
         if is_admin_user(request.user):
             return redirect('items:item_list')
@@ -501,11 +539,34 @@ def category_delete_view(request, pk):
         return render(request, '403.html', status=403)
 
     category = get_object_or_404(Category, pk=pk)
+    item_count = category.items.count()
+    if item_count > 0:
+        messages.error(
+            request,
+            f'Cannot delete category "{category.name}" because it contains {item_count} item(s). '
+            f'Please reassign or delete the items first.'
+        )
+        return redirect('items:category_list')
+
     if request.method == 'POST':
         name = category.name
         category.delete()
         messages.success(request, f'Category "{name}" was deleted successfully.')
         return redirect('items:category_list')
 
-    return render(request, 'items/confirm_delete_category.html', {'category': category})
+    return render(request, 'items/confirm_delete_category.html', {'category': category, 'item_count': item_count})
 
+
+# ─────────────────────────────────────────────
+# Internal Helpers
+# ─────────────────────────────────────────────
+
+def _run_matching_for_item(item):
+    """
+    Run the match engine for *item* and create match notifications
+    for any new matches found.  Called after an item is created or restored.
+    """
+    results = match_engine.generate_matches_for_item(item)
+    for match, created in results:
+        if created:
+            notif_svc.notify_possible_match(match)

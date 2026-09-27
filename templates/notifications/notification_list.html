@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% block title %}Notifications — Lost & Found{% endblock %}
+{% block nav_notifications %}active text-primary{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Header -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3 animate-in">
+    <div>
+      <h1 class="h3 fw-bold mb-1">
+        <i class="bi bi-bell-fill text-primary me-2"></i>Notifications
+        {% if unread_count > 0 %}
+        <span class="badge bg-danger rounded-pill fs-6 align-middle ms-1">{{ unread_count }} unread</span>
+        {% endif %}
+      </h1>
+      <p class="text-muted small mb-0">Stay informed about updates regarding your reported items, claims, and matches.</p>
+    </div>
+    <div class="d-flex gap-2">
+      {% if unread_count > 0 %}
+      <form method="post" action="{% url 'notifications:mark_all_read' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+          <i class="bi bi-check2-all me-1"></i>Mark All as Read
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Filter tabs -->
+  <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white">
+    <div class="card-body p-2 p-md-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <ul class="nav nav-pills gap-1">
+        <li class="nav-item">
+          <a class="nav-link py-2 px-3 rounded-pill {% if not read_filter %}active bg-primary text-white{% else %}text-secondary{% endif %}" href="{% url 'notifications:list' %}">
+            All
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link py-2 px-3 rounded-pill {% if read_filter == 'unread' %}active bg-primary text-white{% else %}text-secondary{% endif %}" href="{% url 'notifications:list' %}?filter=unread">
+            Unread {% if unread_count > 0 %}<span class="badge bg-danger rounded-pill ms-1">{{ unread_count }}</span>{% endif %}
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link py-2 px-3 rounded-pill {% if read_filter == 'read' %}active bg-primary text-white{% else %}text-secondary{% endif %}" href="{% url 'notifications:list' %}?filter=read">
+            Read
+          </a>
+        </li>
+      </ul>
+      <span class="text-muted small">Showing {{ notifications.paginator.count }} notification{{ notifications.paginator.count|pluralize }}</span>
+    </div>
+  </div>
+
+  <!-- Notification List -->
+  <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+    {% if notifications %}
+    <div class="list-group list-group-flush">
+      {% for notif in notifications %}
+      <div class="list-group-item p-3 p-md-4 transition {% if not notif.is_read %}bg-light bg-opacity-75 border-start border-4 border-primary{% endif %}">
+        <div class="d-flex align-items-start gap-3">
+          <!-- Icon -->
+          <div class="rounded-circle bg-{{ notif.get_color }} bg-opacity-10 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
+            <i class="bi {{ notif.get_icon }} text-{{ notif.get_color }} fs-5"></i>
+          </div>
+
+          <!-- Body -->
+          <div class="flex-grow-1">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-1 mb-1">
+              <a href="{% url 'notifications:detail' notif.pk %}" class="fw-bold text-decoration-none {% if not notif.is_read %}text-dark{% else %}text-secondary{% endif %}">
+                {{ notif.title }}
+              </a>
+              <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ notif.created_at|timesince }} ago</small>
+            </div>
+            <p class="text-muted small mb-2">{{ notif.message|truncatewords:28 }}</p>
+
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <span class="badge bg-{{ notif.get_color }} bg-opacity-10 text-{{ notif.get_color }} border border-{{ notif.get_color }} border-opacity-25 rounded-pill" style="font-size: 0.72rem;">
+                {{ notif.get_notification_type_display }}
+              </span>
+
+              {% if notif.related_item %}
+              <a href="{% url 'items:item_detail' notif.related_item.pk %}" class="badge bg-light text-dark border text-decoration-none rounded-pill" style="font-size: 0.72rem;">
+                <i class="bi bi-box-seam me-1"></i>{{ notif.related_item.title }}
+              </a>
+              {% endif %}
+
+              {% if notif.related_claim %}
+              <a href="{% url 'claims:claim_detail' notif.related_claim.pk %}" class="badge bg-light text-dark border text-decoration-none rounded-pill" style="font-size: 0.72rem;">
+                <i class="bi bi-hand-index-thumb me-1"></i>Claim #{{ notif.related_claim.pk }}
+              </a>
+              {% endif %}
+
+              <div class="ms-auto d-flex align-items-center gap-1">
+                {% if not notif.is_read %}
+                <form method="post" action="{% url 'notifications:mark_read' notif.pk %}" class="d-inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                  <button type="submit" class="btn btn-sm btn-link text-decoration-none text-muted p-0 me-2" title="Mark as Read">
+                    <i class="bi bi-check2"></i> Mark Read
+                  </button>
+                </form>
+                {% endif %}
+                <a href="{% url 'notifications:detail' notif.pk %}" class="btn btn-sm btn-outline-secondary rounded-pill py-0 px-2" style="font-size: 0.78rem;">
+                  View
+                </a>
+                <form method="post" action="{% url 'notifications:delete' notif.pk %}" class="d-inline" onsubmit="return confirm('Delete this notification?');">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-link text-danger p-0 ms-1" title="Delete">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+      <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+        <i class="bi bi-bell-slash text-muted fs-1"></i>
+      </div>
+      <h5 class="fw-bold text-dark">No Notifications</h5>
+      <p class="text-muted small">You don't have any notifications in this section.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Pagination -->
+  {% if page_obj.has_other_pages %}
+  <nav aria-label="Notifications pagination">
+    <ul class="pagination justify-content-center">
+      {% if page_obj.has_previous %}
+      <li class="page-item">
+        <a class="page-link rounded-pill px-3 me-1" href="?page={{ page_obj.previous_page_number }}{% if read_filter %}&filter={{ read_filter }}{% endif %}">&laquo; Previous</a>
+      </li>
+      {% endif %}
+      <li class="page-item disabled">
+        <span class="page-link rounded-pill px-3 border-0 bg-transparent text-muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+      </li>
+      {% if page_obj.has_next %}
+      <li class="page-item">
+        <a class="page-link rounded-pill px-3 ms-1" href="?page={{ page_obj.next_page_number }}{% if read_filter %}&filter={{ read_filter }}{% endif %}">Next &raquo;</a>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+
+</div>
+{% endblock %}

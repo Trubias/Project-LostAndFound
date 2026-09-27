@@ -133,6 +133,19 @@ def dashboard_view(request):
     latest_lost_items = active_items.filter(item_type=Item.TYPE_LOST)[:4]
     latest_found_items = active_items.filter(item_type=Item.TYPE_FOUND)[:4]
 
+    # Claim stats for this user (Sprint 4)
+    from claims.models import Claim
+    my_claims = Claim.objects.filter(claimant=request.user)
+
+    # Notifications & Matches (Sprint 6)
+    from notifications.models import Notification
+    from matches.models import ItemMatch
+    unread_notifications_count = Notification.objects.filter(recipient=request.user, is_read=False).count()
+    possible_matches_count = ItemMatch.objects.filter(
+        Q(lost_item__reporter=request.user) | Q(found_item__reporter=request.user),
+        status=ItemMatch.STATUS_PENDING
+    ).count()
+
     context = {
         'user': request.user,
         'my_active_count': my_items.filter(status=Item.STATUS_ACTIVE).count(),
@@ -141,54 +154,40 @@ def dashboard_view(request):
         'my_found_count': my_items.filter(item_type=Item.TYPE_FOUND).count(),
         'latest_lost_items': latest_lost_items,
         'latest_found_items': latest_found_items,
+        # Claim counts
+        'my_claims_pending': my_claims.filter(status=Claim.STATUS_PENDING).count(),
+        'my_claims_approved': my_claims.filter(status=Claim.STATUS_APPROVED).count(),
+        'my_claims_rejected': my_claims.filter(status=Claim.STATUS_REJECTED).count(),
+        'my_claims_total': my_claims.count(),
+        # Notifications & Matches counts
+        'unread_notifications_count': unread_notifications_count,
+        'possible_matches_count': possible_matches_count,
     }
     return render(request, 'dashboard/user_dashboard.html', context)
 
 
 
 # ─────────────────────────────────────────────
-# Admin Dashboard
+# Admin Views (Sprint 5)
 # ─────────────────────────────────────────────
-
-@admin_required
-def admin_dashboard_view(request):
-    profile, _ = Profile.objects.get_or_create(
-        user=request.user,
-        defaults={'role': Profile.ROLE_ADMIN}
-    )
-    total_users = User.objects.filter(
-        Q(profile__role=Profile.ROLE_USER) | Q(is_superuser=False)
-    ).distinct().count()
-
-    # Count admins: superusers + profile role = ADMIN
-    admin_users = User.objects.filter(
-        Q(is_superuser=True) | Q(profile__role=Profile.ROLE_ADMIN)
-    ).distinct()
-    total_admins = admin_users.count()
-
-    # True regular users (not admins)
-    total_regular_users = User.objects.exclude(
-        Q(is_superuser=True) | Q(profile__role=Profile.ROLE_ADMIN)
-    ).count()
-
-    # Item stats for admin dashboard
-    Item = _get_item_model()
-    all_items = Item.objects.all()
-
-    context = {
-        'user': request.user,
-        'profile': profile,
-        'total_users': User.objects.count(),
-        'total_admins': total_admins,
-        'total_regular_users': total_regular_users,
-        # Item stats
-        'total_active_items': all_items.filter(status=Item.STATUS_ACTIVE).count(),
-        'total_archived_items': all_items.filter(status=Item.STATUS_ARCHIVED).count(),
-        'total_lost_items': all_items.filter(item_type=Item.TYPE_LOST).count(),
-        'total_found_items': all_items.filter(item_type=Item.TYPE_FOUND).count(),
-        'total_categories': __import__('items.models', fromlist=['Category']).Category.objects.count(),
-    }
-    return render(request, 'dashboard/admin_dashboard.html', context)
+from .admin_views import (
+    admin_dashboard_view,
+    admin_users_view,
+    admin_user_detail_view,
+    admin_user_toggle_status_view,
+    admin_user_change_role_view,
+    admin_items_view,
+    admin_claims_view,
+    admin_categories_view,
+    admin_category_create_view,
+    admin_category_edit_view,
+    admin_category_delete_view,
+    # Sprint 6
+    admin_matches_view,
+    admin_match_confirm_view,
+    admin_match_dismiss_view,
+    admin_notifications_view,
+)
 
 
 # ─────────────────────────────────────────────

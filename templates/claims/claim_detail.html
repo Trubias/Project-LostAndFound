@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+{% block title %}Claim #{{ claim.pk }} — {{ claim.item.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 900px;">
+
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      {% if is_admin %}
+      <li class="breadcrumb-item"><a href="{% url 'accounts:admin_dashboard' %}">Dashboard</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'claims:claim_list' %}">Manage Claims</a></li>
+      {% elif is_claimant %}
+      <li class="breadcrumb-item"><a href="{% url 'accounts:dashboard' %}">Dashboard</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'claims:my_claims' %}">My Claims</a></li>
+      {% else %}
+      <li class="breadcrumb-item"><a href="{% url 'items:my_items' %}">My Reports</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'claims:item_claims' claim.item.pk %}">Item Claims</a></li>
+      {% endif %}
+      <li class="breadcrumb-item active">Claim #{{ claim.pk }}</li>
+    </ol>
+  </nav>
+
+  <div class="row g-4">
+    <!-- Left: Claim Info -->
+    <div class="col-lg-8">
+
+      <!-- Status Banner -->
+      <div class="card mb-4 border-0 animate-in"
+           style="background: {% if claim.is_approved %}#e8f5e9{% elif claim.is_rejected %}#ffebee{% elif claim.is_withdrawn %}#f5f5f5{% else %}#fffde7{% endif %};">
+        <div class="card-body py-3 px-4">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-3">
+              <i class="bi bi-{% if claim.is_approved %}check-circle-fill text-success{% elif claim.is_rejected %}x-circle-fill text-danger{% elif claim.is_withdrawn %}dash-circle-fill text-secondary{% else %}clock-fill text-warning{% endif %} fs-3"></i>
+              <div>
+                <div class="fw-bold">Claim #{{ claim.pk }}</div>
+                <div class="text-muted small">Submitted {{ claim.created_at|date:"M d, Y" }}</div>
+              </div>
+            </div>
+            <span class="badge bg-{{ claim.get_status_badge_class }} fs-6 px-3 py-2">
+              {{ claim.get_status_display }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Claim Message -->
+      <div class="card mb-4 animate-in delay-1">
+        <div class="card-header bg-white border-bottom py-3">
+          <h2 class="h6 fw-bold mb-0">
+            <i class="bi bi-chat-quote me-2 text-primary"></i>Claim Message
+          </h2>
+        </div>
+        <div class="card-body">
+          <p class="mb-0">{{ claim.message }}</p>
+        </div>
+      </div>
+
+      <!-- Proof Description -->
+      <div class="card mb-4 animate-in delay-2">
+        <div class="card-header bg-white border-bottom py-3">
+          <h2 class="h6 fw-bold mb-0">
+            <i class="bi bi-shield-check me-2 text-success"></i>Proof of Ownership
+          </h2>
+        </div>
+        <div class="card-body">
+          <p class="mb-0">{{ claim.proof_description }}</p>
+        </div>
+      </div>
+
+      <!-- Reviewer Notes (if reviewed) -->
+      {% if claim.reviewed_by %}
+      <div class="card animate-in delay-3 border-0"
+           style="background: {% if claim.is_approved %}#e8f5e9{% else %}#ffebee{% endif %};">
+        <div class="card-header border-bottom-0 py-3">
+          <h2 class="h6 fw-bold mb-0">
+            <i class="bi bi-person-check me-2 {% if claim.is_approved %}text-success{% else %}text-danger{% endif %}"></i>Reviewer Decision
+          </h2>
+        </div>
+        <div class="card-body pt-0">
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <div class="text-muted small fw-semibold text-uppercase mb-1">Reviewed By</div>
+              <div class="fw-semibold">{{ claim.reviewed_by.get_full_name|default:claim.reviewed_by.username }}</div>
+            </div>
+            <div class="col-sm-6">
+              <div class="text-muted small fw-semibold text-uppercase mb-1">Reviewed On</div>
+              <div class="fw-semibold">{{ claim.reviewed_at|date:"M d, Y H:i" }}</div>
+            </div>
+          </div>
+          {% if claim.reviewer_notes %}
+          <div class="text-muted small fw-semibold text-uppercase mb-1">Notes</div>
+          <div class="p-3 rounded-3 bg-white">{{ claim.reviewer_notes }}</div>
+          {% else %}
+          <div class="text-muted fst-italic small">No reviewer notes provided.</div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- Right: Item Info + Actions -->
+    <div class="col-lg-4">
+
+      <!-- Item Card -->
+      <div class="card mb-4 animate-in delay-1">
+        <div class="card-header bg-white border-bottom py-3">
+          <h2 class="h6 fw-bold mb-0">
+            <i class="bi bi-box-seam me-2 text-warning"></i>Item
+          </h2>
+        </div>
+        <div class="card-body">
+          {% if claim.item.image %}
+          <img src="{{ claim.item.image.url }}" alt="{{ claim.item.title }}"
+               class="w-100 rounded-3 mb-3" style="height:140px;object-fit:cover;">
+          {% endif %}
+          <h3 class="h6 fw-bold mb-2">
+            <a href="{% url 'items:item_detail' claim.item.pk %}" class="text-decoration-none text-dark">
+              {{ claim.item.title }}
+            </a>
+          </h3>
+          <div class="d-flex flex-wrap gap-1 mb-2">
+            <span class="badge bg-{% if claim.item.is_lost %}warning text-dark{% else %}success{% endif %}">
+              {{ claim.item.get_item_type_display }}
+            </span>
+            <span class="badge bg-{% if claim.item.is_active %}primary{% else %}secondary{% endif %}">
+              {{ claim.item.get_status_display }}
+            </span>
+          </div>
+          {% if claim.item.category %}
+          <div class="text-muted small"><i class="bi bi-tag me-1"></i>{{ claim.item.category.name }}</div>
+          {% endif %}
+          <div class="text-muted small"><i class="bi bi-geo-alt me-1"></i>{{ claim.item.location }}</div>
+        </div>
+      </div>
+
+      <!-- Claimant Info -->
+      <div class="card mb-4 animate-in delay-2">
+        <div class="card-header bg-white border-bottom py-3">
+          <h2 class="h6 fw-bold mb-0">
+            <i class="bi bi-person me-2"></i>Claimant
+          </h2>
+        </div>
+        <div class="card-body">
+          <div class="fw-semibold">{{ claim.claimant.get_full_name|default:claim.claimant.username }}</div>
+          <div class="text-muted small">@{{ claim.claimant.username }}</div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="card animate-in delay-3">
+        <div class="card-body d-grid gap-2">
+          {% if is_claimant and claim.is_pending %}
+          <a href="{% url 'claims:withdraw_claim' claim.pk %}" class="btn btn-outline-danger">
+            <i class="bi bi-x-circle me-1"></i>Withdraw Claim
+          </a>
+          {% endif %}
+
+          {% if can_review and claim.is_pending %}
+          <a href="{% url 'claims:review_claim' claim.pk %}" class="btn btn-primary">
+            <i class="bi bi-check2-square me-1"></i>Review This Claim
+          </a>
+          {% endif %}
+
+          {% if is_item_reporter or is_admin %}
+          <a href="{% url 'claims:item_claims' claim.item.pk %}" class="btn btn-outline-secondary">
+            <i class="bi bi-list-ul me-1"></i>All Claims for This Item
+          </a>
+          {% endif %}
+
+          {% if is_claimant %}
+          <a href="{% url 'claims:my_claims' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to My Claims
+          </a>
+          {% elif is_admin %}
+          <a href="{% url 'claims:claim_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to All Claims
+          </a>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

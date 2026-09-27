@@ -8,27 +8,42 @@ https://docs.djangoproject.com/en/6.1/topics/settings/
 
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
+
+Production deployment checklist:
+https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
+# ─── Core Security ────────────────────────────────────────────────────────────
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-$x-uqyv1u5y==eywlgj2c4xqr4q1(u*#2b2vm0j9tdt+(t=p-!'
+# In production, set the DJANGO_SECRET_KEY environment variable to a long,
+# random string generated with: python -c "import secrets; print(secrets.token_urlsafe(60))"
+SECRET_KEY = os.environ.get(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-$x-uqyv1u5y==eywlgj2c4xqr4q1(u*#2b2vm0j9tdt+(t=p-!'
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Set DJANGO_DEBUG=False in your production environment variables.
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+# In production, set to your real domain(s), e.g. "yourdomain.com,www.yourdomain.com"
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost,testserver').split(',') if h.strip()]
+
+# CSRF Trusted Origins — add your production HTTPS domain here in the env var.
+# Example: DJANGO_CSRF_TRUSTED_ORIGINS=https://yourdomain.up.railway.app
+_csrf_origins = os.environ.get('DJANGO_CSRF_TRUSTED_ORIGINS', '')
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(',') if o.strip()]
 
 
-# Application definition
+# ─── Application Definition ───────────────────────────────────────────────────
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -40,10 +55,16 @@ INSTALLED_APPS = [
     # Project apps
     'accounts',
     'items',
+    'claims',
+    'notifications',
+    'matches',
+    'reports',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # WhiteNoise serves static files efficiently in production (place after SecurityMiddleware)
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -65,6 +86,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'notifications.context_processors.notification_counts',
             ],
         },
     },
@@ -73,18 +95,39 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/6.1/ref/settings/#databases
+# ─── Database ─────────────────────────────────────────────────────────────────
+# Development: SQLite
+# Production:  PostgreSQL via DATABASE_URL environment variable
+#
+# Railway provides DATABASE_URL automatically when a PostgreSQL plugin is added.
+# Format: postgres://USER:PASSWORD@HOST:PORT/DBNAME
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+_database_url = os.environ.get('DATABASE_URL', '')
+
+if _database_url:
+    # Parse the DATABASE_URL for PostgreSQL (Railway / Heroku style)
+    import urllib.parse
+    _parsed = urllib.parse.urlparse(_database_url)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': _parsed.path.lstrip('/'),
+            'USER': _parsed.username,
+            'PASSWORD': _parsed.password,
+            'HOST': _parsed.hostname,
+            'PORT': str(_parsed.port or 5432),
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
-# Password validation
+# ─── Password Validation ──────────────────────────────────────────────────────
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -102,8 +145,15 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Fast password hashing during automated tests
+import sys
+if 'test' in sys.argv:
+    PASSWORD_HASHERS = [
+        'django.contrib.auth.hashers.MD5PasswordHasher',
+    ]
 
-# Internationalization
+
+# ─── Internationalization ─────────────────────────────────────────────────────
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
@@ -115,29 +165,75 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
+# ─── Static & Media Files ─────────────────────────────────────────────────────
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+# STATIC_ROOT is where collectstatic gathers all static files for production.
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Media files (uploaded files)
+# WhiteNoise compressed static file storage
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Media files (user-uploaded content)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Login redirect
+
+# ─── Authentication ───────────────────────────────────────────────────────────
+
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 
 
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
+# ─── Email Configuration ──────────────────────────────────────────────────────
+# Development: print emails to console instead of sending via SMTP.
+# Production: configure via environment variables. Never commit real SMTP
+# credentials to source control.
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+EMAIL_BACKEND = os.environ.get(
+    'DJANGO_EMAIL_BACKEND',
+    'django.core.mail.backends.console.EmailBackend'
+)
+EMAIL_HOST = os.environ.get('DJANGO_EMAIL_HOST', 'smtp.example.com')
+EMAIL_PORT = int(os.environ.get('DJANGO_EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.environ.get('DJANGO_EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.environ.get('DJANGO_EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('DJANGO_EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.environ.get('DJANGO_DEFAULT_FROM_EMAIL', 'noreply@lostandfound.local')
+
+
+# ─── Matching Configuration ────────────────────────────────────────────────────
+# Minimum score (0-100) for a Lost/Found item pair to be considered a match.
+
+MATCH_THRESHOLD = int(os.environ.get('MATCH_THRESHOLD', '50'))
+
+
+# ─── Production Security Settings ─────────────────────────────────────────────
+# These settings are safe to enable in production (when DEBUG=False and HTTPS
+# is configured). They are intentionally disabled in development (DEBUG=True)
+# to avoid breaking the local dev server.
+#
+# To activate, set the following environment variables in production:
+#   DJANGO_SECURE_SSL_REDIRECT=True
+#   DJANGO_SESSION_COOKIE_SECURE=True
+#   DJANGO_CSRF_COOKIE_SECURE=True
+#   DJANGO_SECURE_HSTS_SECONDS=31536000
+#   DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS=True
+#   DJANGO_SECURE_HSTS_PRELOAD=True
+
+SECURE_SSL_REDIRECT = os.environ.get('DJANGO_SECURE_SSL_REDIRECT', 'False') == 'True'
+SESSION_COOKIE_SECURE = os.environ.get('DJANGO_SESSION_COOKIE_SECURE', 'False') == 'True'
+CSRF_COOKIE_SECURE = os.environ.get('DJANGO_CSRF_COOKIE_SECURE', 'False') == 'True'
+SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_SECURE_HSTS_SECONDS', '0'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS', 'False') == 'True'
+SECURE_HSTS_PRELOAD = os.environ.get('DJANGO_SECURE_HSTS_PRELOAD', 'False') == 'True'
+
+# Always-on security headers (safe for all environments)
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'

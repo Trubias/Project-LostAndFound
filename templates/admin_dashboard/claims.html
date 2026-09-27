@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+{% block title %}Claim Management — Admin Dashboard{% endblock %}
+{% block nav_admin %}active{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Header -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3 animate-in">
+    <div>
+      <h1 class="h3 fw-bold mb-0">
+        <i class="bi bi-hand-index-thumb-fill text-danger me-2"></i>Claim Management
+      </h1>
+      <p class="text-muted small mb-0 mt-1">
+        Inspect claims, review evidence, verify ownership, approve or reject submissions.
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      {% if counts.pending > 0 %}
+      <span class="badge bg-warning text-dark rounded-pill px-3 py-2">
+        <i class="bi bi-clock-fill me-1"></i>{{ counts.pending }} Pending Review
+      </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Admin Navigation Toolbar -->
+  {% with active_tab='claims' %}
+    {% include 'admin_dashboard/sidebar.html' %}
+  {% endwith %}
+
+  <!-- Stat summary pill tabs -->
+  <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white animate-in delay-1 p-2">
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{% url 'accounts:admin_claims' %}" class="btn btn-sm {% if not status_filter %}btn-primary{% else %}btn-light{% endif %} rounded-pill px-3">
+        All Claims ({{ counts.all }})
+      </a>
+      <a href="{% url 'accounts:admin_claims' %}?status=PENDING" class="btn btn-sm {% if status_filter == 'PENDING' %}btn-warning text-dark{% else %}btn-light{% endif %} rounded-pill px-3">
+        Pending ({{ counts.pending }})
+      </a>
+      <a href="{% url 'accounts:admin_claims' %}?status=APPROVED" class="btn btn-sm {% if status_filter == 'APPROVED' %}btn-success{% else %}btn-light{% endif %} rounded-pill px-3">
+        Approved ({{ counts.approved }})
+      </a>
+      <a href="{% url 'accounts:admin_claims' %}?status=REJECTED" class="btn btn-sm {% if status_filter == 'REJECTED' %}btn-danger{% else %}btn-light{% endif %} rounded-pill px-3">
+        Rejected ({{ counts.rejected }})
+      </a>
+      <a href="{% url 'accounts:admin_claims' %}?status=WITHDRAWN" class="btn btn-sm {% if status_filter == 'WITHDRAWN' %}btn-secondary{% else %}btn-light{% endif %} rounded-pill px-3">
+        Withdrawn ({{ counts.withdrawn }})
+      </a>
+    </div>
+  </div>
+
+  <!-- Search Card -->
+  <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white animate-in delay-1">
+    <div class="card-body p-3 p-md-4">
+      <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-9">
+          <label class="form-label small fw-bold text-muted mb-1">Search Claims</label>
+          <div class="input-group">
+            <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" name="q" value="{{ q }}" class="form-control border-start-0" placeholder="Search by item title, claimant username, or claimant email...">
+          </div>
+        </div>
+        {% if status_filter %}
+        <input type="hidden" name="status" value="{{ status_filter }}">
+        {% endif %}
+        <div class="col-md-3 d-flex gap-2">
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-search me-1"></i>Search
+          </button>
+          {% if q or status_filter %}
+          <a href="{% url 'accounts:admin_claims' %}" class="btn btn-outline-secondary" title="Clear filters">
+            <i class="bi bi-x-circle"></i>
+          </a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Claims Table -->
+  <div class="card border-0 shadow-sm rounded-4 overflow-hidden animate-in delay-2">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-4">ID</th>
+            <th>Target Item</th>
+            <th>Claimant</th>
+            <th>Status</th>
+            <th>Date Submitted</th>
+            <th>Reviewed By</th>
+            <th>Reviewed Date</th>
+            <th class="text-end pe-4">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for claim in claims_page %}
+          <tr>
+            <td class="ps-4 text-muted small">#{{ claim.pk }}</td>
+
+            <!-- Item -->
+            <td>
+              <div class="fw-semibold">
+                <a href="{% url 'items:item_detail' pk=claim.item.pk %}" class="text-dark text-decoration-none">
+                  {{ claim.item.title }}
+                </a>
+              </div>
+              <div class="text-muted small">
+                {{ claim.item.get_item_type_display }} · {{ claim.item.category.name|default:"Uncategorized" }}
+              </div>
+            </td>
+
+            <!-- Claimant -->
+            <td>
+              <a href="{% url 'accounts:admin_user_detail' user_id=claim.claimant.pk %}" class="text-decoration-none fw-medium text-dark">
+                @{{ claim.claimant.username }}
+              </a>
+              <div class="text-muted small">{{ claim.claimant.email|default:"No email" }}</div>
+            </td>
+
+            <!-- Status Badge -->
+            <td>
+              <span class="badge bg-{{ claim.get_status_badge_class }} px-2 py-1">
+                {{ claim.get_status_display }}
+              </span>
+            </td>
+
+            <!-- Submitted Date -->
+            <td class="small text-muted">{{ claim.created_at|date:"M d, Y H:i" }}</td>
+
+            <!-- Reviewed By -->
+            <td class="small">
+              {% if claim.reviewed_by %}
+              @{{ claim.reviewed_by.username }}
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+
+            <!-- Reviewed Date -->
+            <td class="small text-muted">
+              {% if claim.reviewed_at %}
+              {{ claim.reviewed_at|date:"M d, Y H:i" }}
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+
+            <!-- Actions -->
+            <td class="text-end pe-4">
+              <div class="btn-group btn-group-sm">
+                <a href="{% url 'claims:claim_detail' claim_id=claim.pk %}" class="btn btn-outline-secondary" title="View Claim Details">
+                  <i class="bi bi-eye"></i>
+                </a>
+                {% if claim.is_pending %}
+                <a href="{% url 'claims:review_claim' claim_id=claim.pk %}" class="btn btn-warning" title="Review & Decide">
+                  <i class="bi bi-check-circle me-1"></i>Review
+                </a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" class="text-center py-5 text-muted">
+              <i class="bi bi-hand-index-thumb fs-2 d-block mb-2 text-secondary"></i>
+              No claims found matching your criteria.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if claims_page.has_other_pages %}
+    <div class="card-footer bg-white border-0 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="small text-muted">
+        Showing {{ claims_page.start_index }} to {{ claims_page.end_index }} of {{ total_count }} claims
+      </div>
+      <nav aria-label="Claims pagination">
+        <ul class="pagination pagination-sm mb-0">
+          {% if claims_page.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="?{{ querystring }}&page={{ claims_page.previous_page_number }}">
+              <i class="bi bi-chevron-left"></i> Previous
+            </a>
+          </li>
+          {% else %}
+          <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i> Previous</span></li>
+          {% endif %}
+
+          {% for num in claims_page.paginator.page_range %}
+            {% if claims_page.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > claims_page.number|add:'-3' and num < claims_page.number|add:'3' %}
+            <li class="page-item"><a class="page-link" href="?{{ querystring }}&page={{ num }}">{{ num }}</a></li>
+            {% endif %}
+          {% endfor %}
+
+          {% if claims_page.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="?{{ querystring }}&page={{ claims_page.next_page_number }}">
+              Next <i class="bi bi-chevron-right"></i>
+            </a>
+          </li>
+          {% else %}
+          <li class="page-item disabled"><span class="page-link">Next <i class="bi bi-chevron-right"></i></span></li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

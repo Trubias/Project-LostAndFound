@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}Claims for {{ item.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'items:my_items' %}">My Reports</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'items:item_detail' item.pk %}">{{ item.title|truncatechars:30 }}</a></li>
+      <li class="breadcrumb-item active">Claims</li>
+    </ol>
+  </nav>
+
+  <!-- Header -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 animate-in">
+    <div>
+      <h1 class="h4 fw-bold mb-1">
+        <i class="bi bi-hand-index-thumb-fill me-2" style="color:#c62828;"></i>
+        Claims for "{{ item.title }}"
+      </h1>
+      <div class="d-flex flex-wrap gap-2">
+        <span class="badge bg-{% if item.is_lost %}warning text-dark{% else %}success{% endif %}">
+          {{ item.get_item_type_display }}
+        </span>
+        <span class="badge bg-{% if item.is_active %}primary{% else %}secondary{% endif %}">
+          {{ item.get_status_display }}
+        </span>
+        {% if pending_count > 0 %}
+        <span class="badge bg-warning text-dark">
+          <i class="bi bi-clock me-1"></i>{{ pending_count }} Pending
+        </span>
+        {% endif %}
+      </div>
+    </div>
+    <a href="{% url 'items:item_detail' item.pk %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Back to Item
+    </a>
+  </div>
+
+  <!-- Claims List -->
+  {% if item_claims %}
+  <div class="d-flex flex-column gap-3">
+    {% for claim in item_claims %}
+    <div class="card animate-in delay-1">
+      <div class="card-body">
+        <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+          <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <div class="fw-bold">
+                <i class="bi bi-person-circle me-1 text-muted"></i>
+                {{ claim.claimant.get_full_name|default:claim.claimant.username }}
+              </div>
+              <span class="text-muted small">@{{ claim.claimant.username }}</span>
+              <span class="badge bg-{{ claim.get_status_badge_class }}">
+                {{ claim.get_status_display }}
+              </span>
+            </div>
+            <div class="text-muted small d-flex flex-wrap gap-3">
+              <span><i class="bi bi-calendar me-1"></i>Submitted {{ claim.created_at|date:"M d, Y" }}</span>
+              {% if claim.reviewed_by %}
+              <span><i class="bi bi-person-check me-1"></i>Reviewed by {{ claim.reviewed_by.username }}</span>
+              {% endif %}
+            </div>
+            <div class="mt-2 text-dark small">
+              <i class="bi bi-chat-quote me-1 text-primary"></i>
+              {{ claim.message|truncatewords:20 }}
+            </div>
+          </div>
+          <div class="d-flex gap-2 flex-shrink-0">
+            <a href="{% url 'claims:claim_detail' claim.pk %}" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-eye me-1"></i>View
+            </a>
+            {% if claim.is_pending %}
+            <a href="{% url 'claims:review_claim' claim.pk %}" class="btn btn-primary btn-sm">
+              <i class="bi bi-check2-square me-1"></i>Review
+            </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card animate-in delay-1">
+    <div class="card-body text-center py-5">
+      <div style="font-size:3rem;" class="mb-3">📭</div>
+      <h2 class="h5 fw-bold">No claims yet</h2>
+      <p class="text-muted">Nobody has submitted a claim for this item.</p>
+      <a href="{% url 'items:item_detail' item.pk %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Back to Item
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

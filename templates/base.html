@@ -214,7 +214,29 @@
     .delay-1 { animation-delay: 0.05s; }
     .delay-2 { animation-delay: 0.10s; }
     .delay-3 { animation-delay: 0.15s; }
-    .delay-4 { animation-delay: 0.20s; }
+    /* ── Print Styles ── */
+    @media print {
+      nav, footer, .btn, .no-print, .dropdown, .alert {
+        display: none !important;
+      }
+      body {
+        background: #ffffff !important;
+        color: #000000 !important;
+      }
+      .card {
+        box-shadow: none !important;
+        border: 1px solid #dee2e6 !important;
+        break-inside: avoid;
+      }
+      .container {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 0 !important;
+      }
+      .table {
+        border-color: #dee2e6 !important;
+      }
+    }
   </style>
 
   {% block extra_css %}{% endblock %}
@@ -234,35 +256,55 @@
         {% if user.is_authenticated %}
         <ul class="navbar-nav me-auto">
           {% if user.profile.is_admin %}
-          <!-- ADMIN Navigation -->
+          <!-- ADMIN Navigation (Sprint 5) -->
           <li class="nav-item">
             <a class="nav-link {% block nav_admin %}{% endblock %}" href="{% url 'accounts:admin_dashboard' %}">
               <i class="bi bi-speedometer2 me-1"></i>Dashboard
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {% block nav_items %}{% endblock %}" href="{% url 'items:item_list' %}">
+            <a class="nav-link {% block nav_admin_users %}{% endblock %}" href="{% url 'accounts:admin_users' %}">
+              <i class="bi bi-people-fill me-1"></i>Users
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% block nav_admin_items %}{% endblock %}" href="{% url 'accounts:admin_items' %}">
+              <i class="bi bi-box-seam-fill me-1"></i>Items
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% block nav_admin_claims %}{% endblock %}" href="{% url 'accounts:admin_claims' %}">
+              <i class="bi bi-hand-index-thumb-fill me-1"></i>Claims
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% block nav_categories %}{% endblock %}" href="{% url 'accounts:admin_categories' %}">
+              <i class="bi bi-tags-fill me-1"></i>Categories
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% block nav_admin_matches %}{% endblock %}" href="{% url 'accounts:admin_matches' %}">
+              <i class="bi bi-shuffle me-1"></i>Matches
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% block nav_admin_notifications %}{% endblock %}" href="{% url 'accounts:admin_notifications' %}">
+              <i class="bi bi-bell-fill me-1"></i>Notifications
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% block nav_admin_reports %}{% endblock %}" href="{% url 'reports:index' %}">
+              <i class="bi bi-file-earmark-bar-graph-fill me-1"></i>Reports
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% block nav_browse_admin %}{% endblock %}" href="{% url 'items:item_list' %}">
               <i class="bi bi-grid-3x3-gap me-1"></i>Browse Items
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {% block nav_lost_admin %}{% endblock %}" href="{% url 'items:lost_items' %}">
-              <i class="bi bi-question-circle me-1"></i>Lost Items
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% block nav_found_admin %}{% endblock %}" href="{% url 'items:found_items' %}">
-              <i class="bi bi-bag-check me-1"></i>Found Items
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% block nav_categories %}{% endblock %}" href="{% url 'items:category_list' %}">
-              <i class="bi bi-tags me-1"></i>Categories
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="/admin/">
-              <i class="bi bi-gear me-1"></i>Django Admin
+            <a class="nav-link" href="/admin/" target="_blank">
+              <i class="bi bi-gear-fill me-1"></i>Django Admin
             </a>
           </li>
 
@@ -308,12 +350,36 @@
           <li class="nav-item">
             <a class="nav-link {% block nav_my_items %}{% endblock %}" href="{% url 'items:my_items' %}">
               <i class="bi bi-clipboard2-check me-1"></i>My Reports
-
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% block nav_my_claims %}{% endblock %}" href="{% url 'claims:my_claims' %}">
+              <i class="bi bi-hand-index-thumb me-1"></i>My Claims
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% block nav_matches %}{% endblock %}" href="{% url 'matches:list' %}">
+              <i class="bi bi-shuffle me-1"></i>Matches
+              {% if user_pending_matches_count > 0 %}
+              <span class="badge rounded-pill bg-warning text-dark ms-1">{{ user_pending_matches_count }}</span>
+              {% endif %}
             </a>
           </li>
           {% endif %}
         </ul>
         <ul class="navbar-nav ms-auto align-items-center gap-2">
+          <!-- Notification Bell icon with badge -->
+          <li class="nav-item">
+            <a class="nav-link position-relative px-2 {% block nav_notifications %}{% endblock %}" href="{% url 'notifications:list' %}" title="Notifications">
+              <i class="bi bi-bell fs-5"></i>
+              {% if unread_notifications_count > 0 %}
+              <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
+                {{ unread_notifications_count }}
+                <span class="visually-hidden">unread notifications</span>
+              </span>
+              {% endif %}
+            </a>
+          </li>
           <li class="nav-item">
             <a class="nav-link" href="{% url 'accounts:profile' %}">
               <i class="bi bi-person-circle me-1"></i>{{ user.get_full_name|default:user.username }}

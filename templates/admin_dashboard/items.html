@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+{% block title %}Item Management — Admin Dashboard{% endblock %}
+{% block nav_admin %}active{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Header -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3 animate-in">
+    <div>
+      <h1 class="h3 fw-bold mb-0">
+        <i class="bi bi-box-seam-fill text-warning me-2"></i>Item Management
+      </h1>
+      <p class="text-muted small mb-0 mt-1">
+        Monitor, search, filter, edit, archive, or restore all reported items.
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'items:report_lost' %}" class="btn btn-outline-warning btn-sm rounded-pill">
+        <i class="bi bi-plus-circle me-1"></i>New Lost Item
+      </a>
+      <a href="{% url 'items:report_found' %}" class="btn btn-outline-success btn-sm rounded-pill">
+        <i class="bi bi-plus-circle me-1"></i>New Found Item
+      </a>
+    </div>
+  </div>
+
+  <!-- Admin Navigation Toolbar -->
+  {% with active_tab='items' %}
+    {% include 'admin_dashboard/sidebar.html' %}
+  {% endwith %}
+
+  <!-- Search & Filter Card -->
+  <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white animate-in delay-1">
+    <div class="card-body p-3 p-md-4">
+      <form method="get" class="row g-3 align-items-end">
+        <!-- Search bar -->
+        <div class="col-md-4">
+          <label class="form-label small fw-bold text-muted mb-1">Search Items</label>
+          <div class="input-group">
+            <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" name="q" value="{{ q }}" class="form-control border-start-0" placeholder="Title, description, location, or reporter...">
+          </div>
+        </div>
+
+        <!-- Item Type Filter -->
+        <div class="col-sm-4 col-md-2">
+          <label class="form-label small fw-bold text-muted mb-1">Type</label>
+          <select name="type" class="form-select">
+            <option value="" {% if not item_type %}selected{% endif %}>All Types</option>
+            <option value="LOST" {% if item_type == 'LOST' %}selected{% endif %}>Lost</option>
+            <option value="FOUND" {% if item_type == 'FOUND' %}selected{% endif %}>Found</option>
+          </select>
+        </div>
+
+        <!-- Status Filter -->
+        <div class="col-sm-4 col-md-2">
+          <label class="form-label small fw-bold text-muted mb-1">Status</label>
+          <select name="status" class="form-select">
+            <option value="" {% if not status_filter %}selected{% endif %}>All Statuses</option>
+            <option value="ACTIVE" {% if status_filter == 'ACTIVE' %}selected{% endif %}>Active</option>
+            <option value="ARCHIVED" {% if status_filter == 'ARCHIVED' %}selected{% endif %}>Archived</option>
+          </select>
+        </div>
+
+        <!-- Category Filter -->
+        <div class="col-sm-4 col-md-2">
+          <label class="form-label small fw-bold text-muted mb-1">Category</label>
+          <select name="category" class="form-select">
+            <option value="">All Categories</option>
+            {% for cat in categories %}
+            <option value="{{ cat.id }}" {% if selected_category == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="col-md-2 d-flex gap-2">
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-funnel-fill me-1"></i>Filter
+          </button>
+          {% if q or item_type or status_filter or selected_category %}
+          <a href="{% url 'accounts:admin_items' %}" class="btn btn-outline-secondary" title="Clear filters">
+            <i class="bi bi-x-circle"></i>
+          </a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Items Table -->
+  <div class="card border-0 shadow-sm rounded-4 overflow-hidden animate-in delay-2">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-4">ID</th>
+            <th>Item</th>
+            <th>Type</th>
+            <th>Category</th>
+            <th>Location</th>
+            <th>Reporter</th>
+            <th>Status</th>
+            <th>Date Occurred</th>
+            <th>Reported</th>
+            <th class="text-end pe-4">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items_page %}
+          <tr>
+            <td class="ps-4 text-muted small">#{{ item.pk }}</td>
+
+            <!-- Title & Image -->
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                {% if item.image %}
+                <img src="{{ item.image.url }}" alt="{{ item.title }}" class="rounded" style="width: 38px; height: 38px; object-fit: cover;">
+                {% else %}
+                <div class="rounded bg-light d-flex align-items-center justify-content-center text-muted" style="width: 38px; height: 38px;">
+                  <i class="bi bi-image"></i>
+                </div>
+                {% endif %}
+                <div>
+                  <a href="{% url 'items:item_detail' pk=item.pk %}" class="fw-semibold text-dark text-decoration-none">
+                    {{ item.title|truncatechars:28 }}
+                  </a>
+                </div>
+              </div>
+            </td>
+
+            <!-- Type -->
+            <td>
+              {% if item.is_lost %}
+              <span class="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning-subtle px-2 py-1">
+                Lost
+              </span>
+              {% else %}
+              <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle px-2 py-1">
+                Found
+              </span>
+              {% endif %}
+            </td>
+
+            <!-- Category -->
+            <td class="small">{{ item.category.name|default:"—" }}</td>
+
+            <!-- Location -->
+            <td class="small text-truncate" style="max-width: 120px;" title="{{ item.location }}">
+              {{ item.location }}
+            </td>
+
+            <!-- Reporter -->
+            <td class="small">
+              <a href="{% url 'accounts:admin_user_detail' user_id=item.reporter.pk %}" class="text-decoration-none text-muted">
+                @{{ item.reporter.username }}
+              </a>
+            </td>
+
+            <!-- Status -->
+            <td>
+              {% if item.is_active %}
+              <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle px-2 py-1">Active</span>
+              {% else %}
+              <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle px-2 py-1">Archived</span>
+              {% endif %}
+            </td>
+
+            <!-- Date Occurred -->
+            <td class="small text-muted">{{ item.date_occurred|date:"M d, Y" }}</td>
+
+            <!-- Date Reported -->
+            <td class="small text-muted">{{ item.created_at|date:"M d, Y" }}</td>
+
+            <!-- Actions -->
+            <td class="text-end pe-4">
+              <div class="btn-group btn-group-sm">
+                <a href="{% url 'items:item_detail' pk=item.pk %}" class="btn btn-outline-secondary" title="View Detail">
+                  <i class="bi bi-eye"></i>
+                </a>
+                <a href="{% url 'items:edit_item' pk=item.pk %}" class="btn btn-outline-primary" title="Edit Item">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                {% if item.is_active %}
+                <a href="{% url 'items:archive_item' pk=item.pk %}" class="btn btn-outline-warning" title="Archive Item">
+                  <i class="bi bi-archive"></i>
+                </a>
+                {% else %}
+                <a href="{% url 'items:restore_item' pk=item.pk %}" class="btn btn-outline-success" title="Restore Item">
+                  <i class="bi bi-arrow-counterclockwise"></i>
+                </a>
+                {% endif %}
+                <a href="{% url 'claims:item_claims' item_id=item.pk %}" class="btn btn-outline-danger" title="View Claims for this item">
+                  <i class="bi bi-hand-index-thumb"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="10" class="text-center py-5 text-muted">
+              <i class="bi bi-box-seam fs-2 d-block mb-2 text-secondary"></i>
+              No items match the specified search or filter criteria.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if items_page.has_other_pages %}
+    <div class="card-footer bg-white border-0 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="small text-muted">
+        Showing {{ items_page.start_index }} to {{ items_page.end_index }} of {{ total_count }} items
+      </div>
+      <nav aria-label="Items pagination">
+        <ul class="pagination pagination-sm mb-0">
+          {% if items_page.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="?{{ querystring }}&page={{ items_page.previous_page_number }}">
+              <i class="bi bi-chevron-left"></i> Previous
+            </a>
+          </li>
+          {% else %}
+          <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-left"></i> Previous</span></li>
+          {% endif %}
+
+          {% for num in items_page.paginator.page_range %}
+            {% if items_page.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > items_page.number|add:'-3' and num < items_page.number|add:'3' %}
+            <li class="page-item"><a class="page-link" href="?{{ querystring }}&page={{ num }}">{{ num }}</a></li>
+            {% endif %}
+          {% endfor %}
+
+          {% if items_page.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="?{{ querystring }}&page={{ items_page.next_page_number }}">
+              Next <i class="bi bi-chevron-right"></i>
+            </a>
+          </li>
+          {% else %}
+          <li class="page-item disabled"><span class="page-link">Next <i class="bi bi-chevron-right"></i></span></li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% block title %}My Claims{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Header -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 animate-in">
+    <div>
+      <h1 class="h3 fw-bold mb-0">
+        <i class="bi bi-hand-index-thumb-fill me-2" style="color:#c62828;"></i>My Claims
+      </h1>
+      <p class="text-muted small mb-0 mt-1">Track all the claims you have submitted for items.</p>
+    </div>
+    <a href="{% url 'items:item_list' %}" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-search me-1"></i>Browse Items to Claim
+    </a>
+  </div>
+
+  <!-- Status Stats -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3 animate-in delay-1">
+      <div class="stat-card bg-gradient-blue h-100">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="stat-label">Total</div>
+            <div class="stat-number mt-2">{{ counts.all }}</div>
+          </div>
+          <i class="bi bi-clipboard2 stat-icon"></i>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 animate-in delay-2">
+      <div class="stat-card bg-gradient-orange h-100">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="stat-label">Pending</div>
+            <div class="stat-number mt-2">{{ counts.pending }}</div>
+          </div>
+          <i class="bi bi-clock stat-icon"></i>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 animate-in delay-3">
+      <div class="stat-card bg-gradient-teal h-100">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="stat-label">Approved</div>
+            <div class="stat-number mt-2">{{ counts.approved }}</div>
+          </div>
+          <i class="bi bi-check-circle stat-icon"></i>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3 animate-in delay-4">
+      <div class="stat-card bg-gradient-gray h-100">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="stat-label">Rejected</div>
+            <div class="stat-number mt-2">{{ counts.rejected }}</div>
+          </div>
+          <i class="bi bi-x-circle stat-icon"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Tabs -->
+  <div class="card mb-4 animate-in delay-2">
+    <div class="card-body py-2 px-3">
+      <div class="d-flex flex-wrap gap-1">
+        <a href="{% url 'claims:my_claims' %}"
+           class="btn btn-sm {% if not status_filter %}btn-dark{% else %}btn-outline-secondary{% endif %}">
+          All <span class="badge bg-secondary ms-1">{{ counts.all }}</span>
+        </a>
+        <a href="?status=PENDING"
+           class="btn btn-sm {% if status_filter == 'PENDING' %}btn-warning text-dark{% else %}btn-outline-warning{% endif %}">
+          Pending <span class="badge bg-warning text-dark ms-1">{{ counts.pending }}</span>
+        </a>
+        <a href="?status=APPROVED"
+           class="btn btn-sm {% if status_filter == 'APPROVED' %}btn-success{% else %}btn-outline-success{% endif %}">
+          Approved <span class="badge bg-success ms-1">{{ counts.approved }}</span>
+        </a>
+        <a href="?status=REJECTED"
+           class="btn btn-sm {% if status_filter == 'REJECTED' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+          Rejected <span class="badge bg-danger ms-1">{{ counts.rejected }}</span>
+        </a>
+        <a href="?status=WITHDRAWN"
+           class="btn btn-sm {% if status_filter == 'WITHDRAWN' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+          Withdrawn <span class="badge bg-secondary ms-1">{{ counts.withdrawn }}</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Claims List -->
+  {% if claims %}
+  <div class="d-flex flex-column gap-3">
+    {% for claim in claims %}
+    <div class="card animate-in delay-1">
+      <div class="card-body">
+        <div class="d-flex flex-wrap align-items-center gap-3">
+          <!-- Item image / icon -->
+          {% if claim.item.image %}
+          <img src="{{ claim.item.image.url }}" alt="{{ claim.item.title }}"
+               style="width:60px;height:60px;object-fit:cover;border-radius:10px;flex-shrink:0;">
+          {% else %}
+          <div style="width:60px;height:60px;border-radius:10px;background:{% if claim.item.is_lost %}#fff3e0{% else %}#e8f5e9{% endif %};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="bi bi-{% if claim.item.is_lost %}question-circle{% else %}bag-check{% endif %} fs-4"
+               style="color:{% if claim.item.is_lost %}#e65100{% else %}#2e7d32{% endif %};"></i>
+          </div>
+          {% endif %}
+
+          <!-- Main info -->
+          <div class="flex-grow-1">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+              <h2 class="h6 fw-bold mb-0">
+                <a href="{% url 'items:item_detail' claim.item.pk %}" class="text-decoration-none text-dark">
+                  {{ claim.item.title }}
+                </a>
+              </h2>
+              <span class="badge bg-{{ claim.get_status_badge_class }}">
+                {{ claim.get_status_display }}
+              </span>
+              <span class="badge bg-{% if claim.item.is_lost %}warning text-dark{% else %}success{% endif %}">
+                {{ claim.item.get_item_type_display }}
+              </span>
+            </div>
+            <div class="text-muted small d-flex flex-wrap gap-3">
+              {% if claim.item.category %}
+              <span><i class="bi bi-tag me-1"></i>{{ claim.item.category.name }}</span>
+              {% endif %}
+              <span><i class="bi bi-calendar me-1"></i>Submitted {{ claim.created_at|date:"M d, Y" }}</span>
+              <span><i class="bi bi-arrow-repeat me-1"></i>Updated {{ claim.updated_at|date:"M d, Y" }}</span>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex gap-2 flex-shrink-0">
+            <a href="{% url 'claims:claim_detail' claim.pk %}" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-eye me-1"></i>View
+            </a>
+            {% if claim.is_pending %}
+            <a href="{% url 'claims:withdraw_claim' claim.pk %}" class="btn btn-outline-danger btn-sm">
+              <i class="bi bi-x me-1"></i>Withdraw
+            </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card animate-in delay-2">
+    <div class="card-body text-center py-5">
+      <div class="mb-3" style="font-size:3rem;">📋</div>
+      <h2 class="h5 fw-bold">No claims found</h2>
+      <p class="text-muted mb-4">
+        {% if status_filter %}
+        You have no {{ status_filter|lower }} claims.
+        <a href="{% url 'claims:my_claims' %}">View all claims</a>
+        {% else %}
+        You haven't submitted any claims yet.
+        {% endif %}
+      </p>
+      <a href="{% url 'items:item_list' %}" class="btn btn-primary">
+        <i class="bi bi-search me-1"></i>Browse Items
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
