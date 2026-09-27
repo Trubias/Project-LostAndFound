@@ -117,6 +117,9 @@ def logout_view(request):
 
 @login_required(login_url='/login/')
 def dashboard_view(request):
+    # Admins have their own separate dashboard and cannot access the user dashboard
+    if is_admin_user(request.user):
+        return redirect('accounts:admin_dashboard')
     return render(request, 'dashboard/user_dashboard.html', {
         'user': request.user,
     })
@@ -128,6 +131,10 @@ def dashboard_view(request):
 
 @admin_required
 def admin_dashboard_view(request):
+    profile, _ = Profile.objects.get_or_create(
+        user=request.user,
+        defaults={'role': Profile.ROLE_ADMIN}
+    )
     total_users = User.objects.filter(
         Q(profile__role=Profile.ROLE_USER) | Q(is_superuser=False)
     ).distinct().count()
@@ -144,6 +151,8 @@ def admin_dashboard_view(request):
     ).count()
 
     context = {
+        'user': request.user,
+        'profile': profile,
         'total_users': User.objects.count(),
         'total_admins': total_admins,
         'total_regular_users': total_regular_users,

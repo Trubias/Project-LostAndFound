@@ -17,8 +17,8 @@
       </p>
     </div>
     <div class="d-flex gap-2">
-      <a href="{% url 'accounts:dashboard' %}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-house me-1"></i>User Dashboard
+      <a href="{% url 'accounts:profile' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-person-circle me-1"></i>My Profile
       </a>
       <a href="/admin/" class="btn btn-outline-dark btn-sm" target="_blank">
         <i class="bi bi-gear me-1"></i>Django Admin
@@ -26,6 +26,30 @@
       <a href="{% url 'accounts:logout' %}" class="btn btn-outline-danger btn-sm">
         <i class="bi bi-box-arrow-right me-1"></i>Logout
       </a>
+    </div>
+  </div>
+
+  <!-- Admin Account Card -->
+  <div class="card p-3 mb-4 animate-in delay-1 bg-white border-0 shadow-sm rounded-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+      <div class="d-flex align-items-center gap-3">
+        {% if profile.profile_image %}
+        <img src="{{ profile.profile_image.url }}" alt="Profile" class="rounded-circle" style="width: 52px; height: 52px; object-fit: cover;">
+        {% else %}
+        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 52px; height: 52px; font-size: 1.5rem;">
+          <i class="bi bi-shield-check"></i>
+        </div>
+        {% endif %}
+        <div>
+          <h2 class="h6 fw-bold mb-0">{{ user.get_full_name|default:user.username }}</h2>
+          <small class="text-muted">Username: <strong>@{{ user.username }}</strong> &nbsp;|&nbsp; Email: <strong>{{ user.email|default:"None" }}</strong></small>
+        </div>
+      </div>
+      <div>
+        <a href="{% url 'accounts:profile' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+          <i class="bi bi-pencil-square me-1"></i>Edit My Account
+        </a>
+      </div>
     </div>
   </div>
 

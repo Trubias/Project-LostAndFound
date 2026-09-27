@@ -28,11 +28,6 @@
       <a href="{% url 'accounts:profile' %}" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-person-circle me-1"></i>My Profile
       </a>
-      {% if user.profile.is_admin %}
-      <a href="{% url 'accounts:admin_dashboard' %}" class="btn btn-outline-primary btn-sm">
-        <i class="bi bi-speedometer2 me-1"></i>Admin Panel
-      </a>
-      {% endif %}
       <a href="{% url 'accounts:logout' %}" class="btn btn-outline-danger btn-sm">
         <i class="bi bi-box-arrow-right me-1"></i>Logout
       </a>

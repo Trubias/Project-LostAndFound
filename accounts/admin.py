@@ -17,6 +17,26 @@ class UserAdmin(BaseUserAdmin):
     list_display = ('username', 'email', 'first_name', 'last_name', 'get_role', 'is_staff', 'date_joined')
     list_filter = ('is_staff', 'is_superuser', 'profile__role')
 
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        # Admins can only see their own account
+        return qs.filter(pk=request.user.pk)
+
+    def has_change_permission(self, request, obj=None):
+        if obj is not None and obj.pk != request.user.pk:
+            return False
+        return super().has_change_permission(request, obj)
+
+    def has_view_permission(self, request, obj=None):
+        if obj is not None and obj.pk != request.user.pk:
+            return False
+        return super().has_view_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        if obj is not None and obj.pk != request.user.pk:
+            return False
+        return super().has_delete_permission(request, obj)
+
     def get_role(self, obj):
         try:
             return obj.profile.get_role_display()
@@ -32,6 +52,26 @@ class ProfileAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'user__email', 'user__first_name', 'user__last_name', 'phone')
     readonly_fields = ('created_at', 'updated_at')
     ordering = ('-created_at',)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        # Admins can only see their own profile
+        return qs.filter(user=request.user)
+
+    def has_change_permission(self, request, obj=None):
+        if obj is not None and obj.user != request.user:
+            return False
+        return super().has_change_permission(request, obj)
+
+    def has_view_permission(self, request, obj=None):
+        if obj is not None and obj.user != request.user:
+            return False
+        return super().has_view_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        if obj is not None and obj.user != request.user:
+            return False
+        return super().has_delete_permission(request, obj)
 
     def get_full_name(self, obj):
         return obj.user.get_full_name() or '—'
