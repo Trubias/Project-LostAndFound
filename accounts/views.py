@@ -37,6 +37,18 @@ def admin_required(view_func):
 
 
 # ─────────────────────────────────────────────
+# Home / Root Redirect
+# ─────────────────────────────────────────────
+
+def home_view(request):
+    if request.user.is_authenticated:
+        if is_admin_user(request.user):
+            return redirect('accounts:admin_dashboard')
+        return redirect('accounts:dashboard')
+    return redirect('accounts:login')
+
+
+# ─────────────────────────────────────────────
 # Registration
 # ─────────────────────────────────────────────
 
