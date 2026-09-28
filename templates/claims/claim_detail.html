@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Claim #{{ claim.pk }} — {{ claim.item.title }}{% endblock %}
+{% block nav_admin_claims %}{% if user.profile.is_admin %}active{% endif %}{% endblock %}
+{% block nav_my_claims %}{% if not user.profile.is_admin %}active{% endif %}{% endblock %}
 
 {% block content %}
 <div class="container py-4" style="max-width: 900px;">
