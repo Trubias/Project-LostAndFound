@@ -63,6 +63,14 @@ class ClaimForm(forms.ModelForm):
 
 class ReviewClaimForm(forms.Form):
     """Form for reviewers (item reporter or admin) to approve/reject a claim."""
+    action = forms.ChoiceField(
+        label='Decision',
+        choices=[
+            ('approve', 'Approve and resolve item'),
+            ('reject', 'Reject this claim'),
+        ],
+        widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
+    )
     reviewer_notes = forms.CharField(
         label='Reviewer Notes',
         widget=forms.Textarea(attrs={
@@ -110,11 +118,3 @@ class HandoffResponseForm(forms.Form):
         if cleaned.get('action') == 'request_change' and len(cleaned.get('handoff_change_request', '').strip()) < 5:
             self.add_error('handoff_change_request', 'Describe the time or place you would like to change.')
         return cleaned
-    action = forms.ChoiceField(
-        label='Decision',
-        choices=[
-            ('approve', 'Approve — confirm ownership and resolve item'),
-            ('reject', 'Reject — deny this claim'),
-        ],
-        widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
-    )

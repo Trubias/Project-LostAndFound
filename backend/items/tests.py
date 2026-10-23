@@ -422,16 +422,16 @@ class ItemsSprint3SearchAndDiscoveryTests(TestCase):
         response = self.client.get(reverse('items:item_list') + '?q=ComLab%20North')
         self.assertContains(response, self.item1.title)
 
-    def test_catalog_api_includes_structured_location(self):
+    def test_public_catalog_api_hides_precise_location(self):
         self.item1.building = 'Main Building'
         self.item1.room = 'ComLab North'
         self.item1.workstation = 'PC 14'
         self.item1.save()
         response = self.client.get(reverse('items:api_items'))
         row = next(row for row in response.json()['results'] if row['id'] == self.item1.pk)
-        self.assertEqual(row['building'], 'Main Building')
-        self.assertEqual(row['room'], 'ComLab North')
-        self.assertEqual(row['workstation'], 'PC 14')
+        self.assertEqual(row['building'], '')
+        self.assertEqual(row['room'], '')
+        self.assertEqual(row['workstation'], '')
 
     # 4. Search by category name
     def test_04_search_by_category_name(self):
