@@ -4,10 +4,15 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.db.models import Q
+from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
+import hashlib
+import hmac
 from django.views.decorators.http import require_POST
 
 from .forms import RegisterForm, ProfileUpdateForm
-from .models import Profile
+from .models import LoginAttempt, Profile
 
 # Lazy import to avoid circular issues — items app may not be ready at import time
 def _get_item_model():
@@ -94,14 +99,38 @@ def login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
         password = request.POST.get('password', '')
+        subject_hash = hmac.new(
+            settings.SECRET_KEY.encode('utf-8'),
+            username.casefold().encode('utf-8'),
+            hashlib.sha256,
+        ).hexdigest()
+        now = timezone.now()
+        window = timedelta(seconds=settings.LOGIN_FAILURE_WINDOW_SECONDS)
+        window_start = now - window
+        LoginAttempt.objects.filter(created_at__lt=window_start).delete()
+        recent_attempts = LoginAttempt.objects.filter(
+            subject_hash=subject_hash,
+            created_at__gte=window_start,
+        ).order_by('created_at')
+        attempt_count = recent_attempts.count()
+        if attempt_count >= settings.LOGIN_FAILURE_LIMIT:
+            oldest_attempt = recent_attempts.first()
+            retry_after = max(1, int((oldest_attempt.created_at + window - now).total_seconds()) + 1)
+            messages.error(request, 'Too many sign-in attempts. Please wait before trying again.')
+            response = render(request, 'accounts/login.html', status=429)
+            response['Retry-After'] = str(retry_after)
+            return response
+
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
+            LoginAttempt.objects.filter(subject_hash=subject_hash).delete()
             login(request, user)
             if is_admin_user(user):
                 return redirect('/admin-dashboard')
             return redirect('accounts:dashboard')
         else:
+            LoginAttempt.objects.create(subject_hash=subject_hash)
             messages.error(request, 'Invalid username or password. Please try again.')
 
     return render(request, 'accounts/login.html')

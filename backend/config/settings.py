@@ -239,6 +239,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
+LOGIN_FAILURE_LIMIT = max(1, int(os.environ.get('DJANGO_LOGIN_FAILURE_LIMIT', '5')))
+LOGIN_FAILURE_WINDOW_SECONDS = max(60, int(os.environ.get('DJANGO_LOGIN_FAILURE_WINDOW_SECONDS', '900')))
 
 
 # ─── Email Configuration ──────────────────────────────────────────────────────

@@ -35,6 +35,17 @@ class Profile(models.Model):
         verbose_name_plural = 'Profiles'
 
 
+class LoginAttempt(models.Model):
+    """Recent failed-login counter event keyed by a secret-derived username hash."""
+
+    subject_hash = models.CharField(max_length=64, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['subject_hash', 'created_at'])]
+
+
 @receiver(post_save, sender=User)
 def create_or_update_user_profile(sender, instance, created, **kwargs):
     """Auto-create or update Profile whenever a User is saved."""

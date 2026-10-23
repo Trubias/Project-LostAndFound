@@ -301,7 +301,7 @@ Verification: **187 passed and 1 PostgreSQL-only test skipped** on local SQLite;
 
 ## Complete system audit addendum (2026-10-24)
 
-This follow-up was implemented on the existing `codex/explore-item-claim-cta` branch and is intended to update the existing PR #3. No deployment or merge was performed.
+This follow-up was implemented on the existing `codex/explore-item-claim-cta` branch. PR #3 had already been merged before this work was complete, so the audit is in PR #4. No deployment or merge was performed by this audit.
 
 ### Confirmed issues fixed
 
@@ -313,10 +313,11 @@ This follow-up was implemented on the existing `codex/explore-item-claim-cta` br
 - **P2 — Repeated claim submission link after filing:** found-item details now link to the user's current claim when one exists rather than offering a duplicate submit action.
 - **P2 — Matching missed common Filipino/English terms and simple typos:** deterministic normalization covers selected common object/color equivalents and tolerates small token spelling errors. Scores remain suggestions and never approve claims.
 - **P2 — Vulnerable Pillow dependency:** upgraded Pillow from 12.3.0 to 13.0.0 and added Python dependency auditing to CI.
+- **P2 — No persistent login throttle:** failed attempts were unlimited. Added a database-backed, HMAC-keyed rolling threshold (5 failures per username per 15 minutes by default), `429` plus `Retry-After`, expired-row cleanup, successful-login reset, environment overrides, and regression tests. This works across app instances using the production PostgreSQL database.
 
 ### Verification on this checkout
 
-- `py manage.py test`: **200 passed, 2 skipped**. The skips are PostgreSQL row-lock/concurrency tests and require PostgreSQL; local tests used SQLite. Django system checks passed. Django emitted the existing non-blocking warning that `backend/staticfiles/` does not exist before `collectstatic`.
+- `py manage.py test`: **203 passed, 2 skipped**. The skips are PostgreSQL row-lock/concurrency tests and require PostgreSQL; local tests used SQLite. Django system checks passed. Django emitted the existing non-blocking warning that `backend/staticfiles/` does not exist before `collectstatic`.
 - `py manage.py makemigrations --check --dry-run`: no ungenerated model changes; notification relation migration `0003_notification_related_match.py` is included.
 - `npm run build`: passed; Next.js compilation and TypeScript passed and the build generated all routes.
 - `npm audit`: zero vulnerabilities.
@@ -327,7 +328,7 @@ This follow-up was implemented on the existing `codex/explore-item-claim-cta` br
 ### Remaining follow-up / environment limits
 
 - PostgreSQL CI now executes and passes the row-lock/concurrency checks; local SQLite still cannot validate row-lock behavior.
-- Login brute-force throttling still needs a shared production cache/rate-limit store; an in-memory limiter would not protect multiple workers. Add after that shared service is configured.
+- The application throttles repeated guesses against one username. Network/IP request limits still need configuration at the trusted hosting ingress; the app intentionally does not trust spoofable forwarded IP headers.
 - Decide school policy for email verification, MFA, reporter review authority, handoff evidence, and personal-data retention/export before enforcing rules.
 - Validate production health, email/password reset delivery, persistent media, backups/restores, and actual hosted browser-to-database flows in the authorized hosting environment. No deployment or merge was made as part of this audit.
 - A visual browser walkthrough was not available during this follow-up; frontend quality was checked by build, route/API tests, and existing local route checks, not a new manual visual session.
