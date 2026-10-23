@@ -7,6 +7,7 @@ export type UserRecord = {
   subtitle?: string;
   badge?: string;
   href?: string;
+  actionLabel?: string;
   meta?: string[];
   image?: string | null;
   reporterName?: string;
@@ -27,7 +28,7 @@ export function UserRecordsTable({ records, emptyLabel = 'No records yet.', show
           {showReporter ? <td className="px-5 py-4"><div className="flex items-center gap-2.5">{record.reporterAvatar ? <img src={record.reporterAvatar} alt="" className="h-8 w-8 rounded-full object-cover"/> : <span aria-hidden="true" className="grid h-8 w-8 place-items-center rounded-full bg-[#edf2e9] text-[10px] font-semibold text-[#47634d]">{record.reporterName?.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase() || 'U'}</span>}<span><span className="block text-xs font-semibold text-[#405148]">{record.reporterName || 'Community member'}</span>{record.reporterUsername ? <span className="text-[10px] text-[#89958c]">@{record.reporterUsername}</span> : null}</span></div></td> : null}
           <td className="px-5 py-4">{record.meta?.length ? <ul className="space-y-1">{record.meta.map((detail, index) => <li key={`${record.id}-${index}`} className="text-xs leading-5 text-[#7b8780]">{detail}</li>)}</ul> : <span className="text-xs text-[#9aa59c]">—</span>}</td>
           <td className="px-5 py-4"><span className="whitespace-nowrap text-xs font-medium text-[#526b57]">{record.badge || 'Active'}</span></td>
-          <td className="px-5 py-4 text-right">{record.href ? <Link href={record.href} className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold text-[#52765b] hover:underline">View <ArrowUpRight size={13}/></Link> : null}</td>
+          <td className="px-5 py-4 text-right">{record.href ? <Link href={record.href} className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold text-[#52765b] hover:underline">{record.actionLabel || 'View'} <ArrowUpRight size={13}/></Link> : null}</td>
         </tr>)}</tbody>
       </table>
     </div> : <div className="py-10 text-center"><PackageSearch className="mx-auto text-[#829087]" size={21}/><p className="mt-3 text-sm font-semibold text-[#405148]">{emptyLabel}</p></div>}
