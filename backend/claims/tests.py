@@ -103,7 +103,8 @@ class SubmitClaimTests(ClaimsBaseTestCase):
             'message': 'I lost this item last Monday near the library entrance.',
             'proof_description': 'It has a small red key ring and my initials on the strap.',
         })
-        self.assertRedirects(response, reverse('claims:claim_detail', args=[1]))
+        claim = Claim.objects.get(claimant=self.user_b, item=self.active_item)
+        self.assertRedirects(response, reverse('claims:claim_detail', args=[claim.pk]))
         self.assertEqual(Claim.objects.count(), 1)
         claim = Claim.objects.first()
         self.assertEqual(claim.claimant, self.user_b)

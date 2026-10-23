@@ -7,6 +7,7 @@ from unittest import skipUnless
 from django.contrib.auth.models import User
 from django.db import close_old_connections, connection, connections
 from django.test import TransactionTestCase
+from django.utils import timezone
 
 from claims.models import Claim
 from claims.views import _approve_claim, _record_handoff_confirmation
