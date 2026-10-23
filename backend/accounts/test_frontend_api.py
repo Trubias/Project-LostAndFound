@@ -9,6 +9,7 @@ from items.models import Category, Item, ReportLocation
 from items.locations import LOCATION_CHOICES
 from matches.models import ItemMatch
 from notifications.models import Notification
+from reports.models import AbuseReport
 
 
 class FrontendPageDataFlowTests(TestCase):
@@ -87,6 +88,9 @@ class FrontendPageDataFlowTests(TestCase):
             '/admin-dashboard/users':'table',
             '/admin-dashboard/items':'list',
             '/admin-dashboard/claims':'list',
+            '/admin-dashboard/handoffs':'list',
+            '/admin-dashboard/activity':'list',
+            '/admin-dashboard/flags':'list',
             '/admin-dashboard/categories':'list',
             '/admin-dashboard/locations':'list',
             '/admin-dashboard/matches':'list',
@@ -251,6 +255,39 @@ class FrontendPageDataFlowTests(TestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.json()['mode'], 'protected')
                 self.assertEqual(response.json()['href'], '/login')
+
+    def test_found_report_and_moderation_routes_work_end_to_end(self):
+        item_report_page = self.get_page(f'/items/{self.found.pk}/report')
+        self.assertEqual(item_report_page.json()['mode'], 'protected')
+
+        self.client.force_login(self.admin)
+        concern_page = self.get_page(f'/items/{self.found.pk}/report')
+        self.assertEqual(concern_page.status_code, 200)
+        self.assertEqual(concern_page.json()['mode'], 'form')
+        self.assertEqual(concern_page.json()['action'], f'/items/{self.found.pk}/report')
+
+        report_response = self.client.post(f'/items/{self.found.pk}/report/', {
+            'reason': 'PRIVACY',
+            'details': 'This post includes personal information that should not be public.',
+        })
+        self.assertEqual(report_response.status_code, 201)
+        abuse_report = AbuseReport.objects.get(item=self.found, submitted_by=self.admin)
+
+        duplicate_response = self.client.post(f'/items/{self.found.pk}/report/', {
+            'reason': 'PRIVACY',
+            'details': 'This is another report for the same item.',
+        })
+        self.assertEqual(duplicate_response.status_code, 409)
+
+        queue = self.get_page('/admin-dashboard/flags')
+        self.assertEqual(queue.status_code, 200)
+        self.assertEqual(queue.json()['records'][0]['id'], abuse_report.pk)
+        review_page = self.get_page(f'/admin-dashboard/flags/{abuse_report.pk}/review')
+        self.assertEqual(review_page.json()['mode'], 'action')
+        review_response = self.client.post(f'/api/admin/flags/{abuse_report.pk}/review/')
+        self.assertEqual(review_response.status_code, 302)
+        abuse_report.refresh_from_db()
+        self.assertEqual(abuse_report.status, AbuseReport.STATUS_REVIEWED)
 
     def test_frontend_notification_actions_use_the_signed_in_users_records(self):
         notification = Notification.objects.create(recipient=self.member, title='A new match', message='Check this possible match.')

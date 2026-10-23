@@ -180,11 +180,10 @@ def _admin_payload(path, request):
         items = Item.objects.all()
         claims = Claim.objects.all()
         matches = ItemMatch.objects.all()
-        open_handoffs = Claim.objects.filter(status=Claim.STATUS_APPROVED, handoff_completed_at__isnull=True)
         return {**base, 'mode': 'dashboard', 'title': 'Admin overview', 'summary': 'A clear, live view of reports, claims, and community activity.', 'stats': _stats([
             ('All reports', items.count()), ('Active reports', items.filter(status=Item.STATUS_ACTIVE).count()),
             ('Lost items', items.filter(item_type=Item.TYPE_LOST).count()), ('Found items', items.filter(item_type=Item.TYPE_FOUND).count()),
-            ('Matches', matches.count()), ('Handoffs needing attention', open_handoffs.count()),
+            ('Matches', matches.count()),
         ]), 'trends': _admin_report_trends(), 'adminActivity': _admin_recent_activity(request, 6),
             'claimStatusCounts': _admin_claim_status_counts(), 'categoryBreakdown': _admin_category_breakdown(6)}
     if path == '/admin-dashboard/handoffs':
