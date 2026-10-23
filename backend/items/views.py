@@ -4,7 +4,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q
 from django.core.paginator import Paginator
 from django.urls import reverse
 
@@ -21,6 +21,12 @@ from reports.models import AbuseReport
 def api_items_view(request):
     """Read-only JSON catalog used by the Next.js item discovery screen."""
     items = Item.objects.filter(status=Item.STATUS_ACTIVE).select_related('category', 'reporter__profile')
+    is_admin = request.user.is_authenticated and is_admin_user(request.user)
+    if request.user.is_authenticated and not is_admin:
+        from claims.models import Claim
+        items = items.annotate(_has_approved_claim=Exists(Claim.objects.filter(
+            item_id=OuterRef('pk'), claimant=request.user, status=Claim.STATUS_APPROVED,
+        )))
     query = request.GET.get('q', '').strip()
     item_type = request.GET.get('type', '').strip().upper()
     if query:
@@ -50,7 +56,12 @@ def api_items_view(request):
         'room': '',
         'workstation': '',
         'date_occurred': item.date_occurred.isoformat(),
-        'approximate_time': item.approximate_time.isoformat() if item.approximate_time else None,
+        'approximate_time': item.approximate_time.isoformat() if (
+            item.approximate_time and (
+                is_admin or item.reporter_id == getattr(request.user, 'pk', None)
+                or getattr(item, '_has_approved_claim', False)
+            )
+        ) else None,
         'image': item.image.url if item.image else None,
         'reporter_name': item.reporter.get_full_name() or item.reporter.username,
         'reporter_username': item.reporter.username,

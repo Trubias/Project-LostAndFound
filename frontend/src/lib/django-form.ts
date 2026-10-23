@@ -6,7 +6,18 @@ export async function submitDjangoForm(form: HTMLFormElement): Promise<string[]>
       body: new FormData(form),
       credentials: 'same-origin',
       cache: 'no-store',
+      redirect: 'manual',
     });
+
+    const location = response.headers.get('location');
+    if (response.status >= 300 && response.status < 400 && location) {
+      const destination = new URL(location, window.location.href);
+      if (destination.origin === window.location.origin) {
+        window.location.assign(destination.href);
+        return [];
+      }
+      return ['The sign-in service returned an invalid redirect. Please try again.'];
+    }
 
     if ((response.headers.get('content-type') ?? '').includes('application/json')) {
       const result = await response.json() as { redirect?: string; detail?: string };
@@ -15,11 +26,6 @@ export async function submitDjangoForm(form: HTMLFormElement): Promise<string[]>
         return [];
       }
       if (result.detail) return [result.detail];
-    }
-
-    if (response.redirected) {
-      window.location.assign(response.url);
-      return [];
     }
 
     if ((response.headers.get('content-type') ?? '').includes('text/html')) {

@@ -115,6 +115,22 @@ class MatchingEngineUnitTests(TestCase):
         self.assertEqual(found_response.status_code, 200)
         self.assertIn(self.lost_phone.pk, [item['id'] for item in found_response.json()['results']])
 
+    def test_live_suggestions_hide_another_reporters_exact_room(self):
+        self.found_phone.room = 'PRIVATE-ROOM-991'
+        self.found_phone.save(update_fields=['room', 'updated_at'])
+        self.client.force_login(self.user1)
+        response = self.client.post(reverse('match_suggestions'), {
+            'title': self.lost_phone.title,
+            'description': self.lost_phone.description,
+            'category': str(self.cat_electronics.pk),
+            'location': self.lost_phone.location,
+            'date_occurred': self.lost_phone.date_occurred.isoformat(),
+            'item_type': Item.TYPE_LOST,
+        })
+        self.assertEqual(response.status_code, 200)
+        candidate = next(row for row in response.json()['results'] if row['id'] == self.found_phone.pk)
+        self.assertEqual(candidate['room'], '')
+
     def test_lost_does_not_match_lost(self):
         # Matching engine only queries opposite type
         results = match_engine.generate_matches_for_item(self.lost_phone)

@@ -31,6 +31,6 @@ export function UserRecordsTable({ records, emptyLabel = 'No records yet.', show
           <td className="px-5 py-4 text-right">{record.href ? <Link href={record.href} className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold text-[#52765b] hover:underline">{record.actionLabel || 'View'} <ArrowUpRight size={13}/></Link> : null}</td>
         </tr>)}</tbody>
       </table>
-    </div> : <div className="py-10 text-center"><PackageSearch className="mx-auto text-[#829087]" size={21}/><p className="mt-3 text-sm font-semibold text-[#405148]">{emptyLabel}</p></div>}
+    </div> : <div className="py-10 text-center"><PackageSearch className="mx-auto text-[#5d6a61]" size={21}/><p className="mt-3 text-sm font-semibold text-[#405148]">{emptyLabel}</p></div>}
   </div>;
 }

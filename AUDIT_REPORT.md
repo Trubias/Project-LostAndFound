@@ -213,7 +213,7 @@ Remaining implementation depends on school or hosting decisions: staff-only vers
 
 This is a follow-up review of the current reorganized checkout. The worktree already contains a broad staged/unstaged directory reorganization and frontend/backend changes; those existing changes were preserved. The local frontend and backend servers were not running, so browser-based end-to-end flows and live hosting behavior could not be exercised.
 
-### Findings to address
+### Findings from the pre-remediation snapshot (status updated in later addenda)
 
 #### P0 — Critical Next.js dependency advisories
 
@@ -332,3 +332,17 @@ This follow-up was implemented on the existing `codex/explore-item-claim-cta` br
 - Decide school policy for email verification, MFA, reporter review authority, handoff evidence, and personal-data retention/export before enforcing rules.
 - Validate production health, email/password reset delivery, persistent media, backups/restores, and actual hosted browser-to-database flows in the authorized hosting environment. No deployment or merge was made as part of this audit.
 - A visual browser walkthrough was not available during this follow-up; frontend quality was checked by build, route/API tests, and existing local route checks, not a new manual visual session.
+
+### Follow-up completion update (2026-10-24)
+
+Further implementation and real browser verification were completed on the same branch and PR after the preceding snapshot. No merge or deployment was performed. This update supersedes earlier notes that form redirects, public item pagination, and matching-upload validation were still open; those paths are now implemented. Notification detail GETs are read-only.
+
+- **P1 - Django form redirects were not followed correctly by the Next frontend:** form requests received Django 302 responses through the API proxy, while the browser helper misread them as HTML errors. The proxy now converts same-backend-origin redirects into JSON containing a relative frontend path, preserves response cookies, and refuses to forward external redirect targets. Registration and login now complete through the proxy.
+- **P1 - Exact approximate time and live-match room leaked to unrelated users:** public catalog responses now hide approximate time, and match suggestions reveal room only to an admin, the item reporter, or an approved claimant. Regression tests cover both APIs.
+- **P2 - Low contrast and unlabeled browse filters:** darker readable text colors were applied across the shared frontend palette, browse type/category selects now have explicit accessible names, and the brand link's accessible name matches visible content. Disabled auth/report buttons keep readable contrast.
+- **P2 - Frontend verification had no repeatable quality gates:** ESLint, TypeScript, Vitest/RTL, Playwright, and axe checks are wired into CI. Browser tests cover mobile registration -> login -> dashboard and mobile browse search. Test services use isolated ports and explicit CSRF origins; the Windows runner uses the Python launcher when needed.
+- **P2 - Avoidable React state updates in effects:** report match state resets on form changes, and the admin record drawer keys fetched detail by record ID to prevent stale content while switching records.
+- **Verification:** `py manage.py test` - **205 passed, 2 PostgreSQL-only tests skipped**; `py manage.py check` - passed; `py manage.py makemigrations --check --dry-run` - no changes; `npm run check` - passed (lint, typecheck, 1 component test); `npm run build` - passed; `npm run test:e2e` - **2 passed**, including axe scans with no violations on registration and browse; `npm audit` and `py -m pip_audit -r requirements.txt` - zero known vulnerabilities; `git diff --check` - passed.
+- **Remaining implementation warnings:** ESLint reports nine existing `<img>` optimization warnings for user-uploaded/dynamic images. A shared Next image-host policy depends on the eventual media host configuration. Django also emits a non-blocking missing `staticfiles/` warning before collection.
+- **Remaining verification and policy limits:** this browser suite exercises key registration/login/dashboard and browse-search paths; it is not an exhaustive manual test of every legacy route, role, or browser. Two PostgreSQL-only tests skip locally but run in CI. Production PostgreSQL, SMTP delivery, persistent media, backups/restores, ingress/IP throttling, school identity/MFA, claim reviewer authority, and data export/retention require hosting access or institution policy decisions.
+- **Manual visual verification:** the earlier note that no browser test was available is superseded; headless mobile browser journeys and axe accessibility scans now pass. A manual walkthrough of every legacy route is still outstanding.

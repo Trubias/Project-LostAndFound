@@ -493,12 +493,22 @@ class ItemsSprint3SearchAndDiscoveryTests(TestCase):
         self.item1.building = 'Main Building'
         self.item1.room = 'ComLab North'
         self.item1.workstation = 'PC 14'
+        self.item1.approximate_time = time(15, 17)
         self.item1.save()
         response = self.client.get(reverse('items:api_items'))
         row = next(row for row in response.json()['results'] if row['id'] == self.item1.pk)
         self.assertEqual(row['building'], '')
         self.assertEqual(row['room'], '')
         self.assertEqual(row['workstation'], '')
+        self.assertIsNone(row['approximate_time'])
+
+    def test_reporter_can_see_own_approximate_time_in_catalog_api(self):
+        self.item1.approximate_time = time(15, 17)
+        self.item1.save(update_fields=['approximate_time', 'updated_at'])
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('items:api_items'))
+        row = next(row for row in response.json()['results'] if row['id'] == self.item1.pk)
+        self.assertEqual(row['approximate_time'], '15:17:00')
 
     # 4. Search by category name
     def test_04_search_by_category_name(self):

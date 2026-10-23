@@ -24,9 +24,19 @@ async function forward(request: NextRequest, path: string[]) {
   });
 
   const outHeaders = new Headers();
-  for (const name of ['content-type', 'content-disposition', 'location', 'cache-control']) {
+  for (const name of ['content-type', 'content-disposition', 'cache-control']) {
     const value = response.headers.get(name);
     if (value) outHeaders.set(name, value);
+  }
+  const location = response.headers.get('location');
+  if (location) {
+    const destination = new URL(location, backend);
+    if (destination.origin === new URL(backend).origin) {
+      const redirect = `${destination.pathname}${destination.search}${destination.hash}`;
+      outHeaders.set('content-type', 'application/json');
+      for (const cookie of response.headers.getSetCookie()) outHeaders.append('set-cookie', cookie);
+      return Response.json({ redirect }, { headers: outHeaders });
+    }
   }
   for (const cookie of response.headers.getSetCookie()) outHeaders.append('set-cookie', cookie);
   return new Response(response.body, { status: response.status, headers: outHeaders });
