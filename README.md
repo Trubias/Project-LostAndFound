@@ -1,6 +1,35 @@
-# Lost & Found Management System
+﻿# Lost & Found Management System
 
 A full-featured, secure, and production-ready web application built with **Django 6** and **Bootstrap 5** for managing lost and found item lifecycles across school campuses, universities, and organizations.
+
+## Next.js frontend (local development)
+
+The frontend lives in `frontend/` and uses Next.js, React, and Tailwind CSS. The backend lives in `backend/` and uses Django for authentication, permissions, database access, and application logic. Run each service from its own folder.
+
+Install Node.js and Python, then open two terminals from the project directory:
+
+```bash
+# Terminal 1 — Django backend
+cd backend
+py -3.14 -m pip install -r requirements.txt
+$env:DJANGO_DEBUG = "True"
+py -3.14 manage.py migrate
+py -3.14 manage.py seed_demo_accounts
+py -3.14 manage.py seed_categories
+py -3.14 manage.py seed_demo_data
+py -3.14 manage.py runserver 8000
+
+# Terminal 2 — Next.js frontend
+cd frontend
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000). Set `DJANGO_URL` if the Django server runs somewhere other than `http://127.0.0.1:8000`.
+
+For local development, explicitly enable Django debug mode before starting the backend (`$env:DJANGO_DEBUG = "True"` in PowerShell). Production starts with debug disabled and requires a unique `DJANGO_SECRET_KEY`.
+
+`seed_demo_accounts` creates `comlab_demo_user` and `comlab_demo_admin` with random passwords and prints them once. Save the output; rerunning the command will not reset or reveal existing passwords. It refuses to run in production. The user account can browse and report items; the admin account can access the ComLab admin dashboard.
 
 ---
 
@@ -18,8 +47,7 @@ The **Lost & Found Management System** simplifies the tracking, claiming, and re
 - **Session & CSRF Security:** Strong password validators, HTTPS cookie flags, CSRF tokens on all state-altering forms, and secure logout handlers.
 
 ### Item Management & Discovery
-- **Report Lost Items:** Detail title, description, category, location, and date of occurrence.
-- **Report Found Items:** Add custody location, description, category, and optional photo upload with file-type and file-size validation.
+- **Report Lost and Found Items:** Record the existing location plus optional building, room/lab, workstation/landmark, and approximate time details; attach a photo with decoded file-type and file-size validation.
 - **Item Discovery:** Keyword search, multi-attribute filtering (category, type, status, date range, location), and pagination.
 - **Item Lifecycle:** Items transition from `ACTIVE` to `ARCHIVED` upon claim resolution or owner recovery.
 
@@ -30,7 +58,7 @@ The **Lost & Found Management System** simplifies the tracking, claiming, and re
 
 ### Intelligent Lost & Found Matching
 - **Automated Match Detection:** Background scoring algorithm evaluates keyword similarity, category alignment, and location proximity between lost and found items.
-- **Match Scores:** Calculated 0–100% confidence scores with component score breakdowns.
+- **Match Scores:** Rule-based similarity scores from 0–100 with component breakdowns; they are not probabilities.
 - **User Verification:** Reporters can confirm or dismiss suggested matches directly from their dashboard.
 
 ### Notifications Center
@@ -47,7 +75,7 @@ The **Lost & Found Management System** simplifies the tracking, claiming, and re
 - **Print-Friendly Styling:** Native CSS `@media print` rules generating clean, official print and PDF layouts with headers, timestamps, and hidden navigation controls.
 
 ### Health Check & Operations
-- **Health Endpoint (`/health/`):** Lightweight JSON endpoint (`{"status": "ok"}`) for container orchestrators, uptime monitors, and Railway deployment healthchecks.
+- **Health and Readiness (`/health/`, `/ready/`):** `/health/` confirms the web process responds; `/ready/` checks database connectivity without returning internal error details.
 
 ---
 
@@ -59,7 +87,7 @@ The **Lost & Found Management System** simplifies the tracking, claiming, and re
 - **Database:**
   - *Local Development:* SQLite 3
   - *Production:* PostgreSQL via `psycopg[binary]` 3.3.6 and `DATABASE_URL`
-- **Frontend:** Django Templates, Bootstrap 5.3.3, Bootstrap Icons 1.11.3, Inter Font
+- **Frontend:** Next.js, React, Tailwind CSS, TypeScript
 - **Deployment Platform:** Railway / Docker / Nixpacks
 
 ---
@@ -67,44 +95,25 @@ The **Lost & Found Management System** simplifies the tracking, claiming, and re
 ## 4. Project Structure
 
 ```text
-Project/
-├── accounts/               # User authentication, profiles, and admin views
-│   ├── admin_views.py     # Administrative dashboard & management handlers
-│   ├── models.py          # User Profile model & post-save signals
-│   └── views.py           # Login, registration, profile, RBAC decorators
-├── claims/                 # Ownership claims and verification workflow
-│   ├── models.py          # Claim model & status state machine
-│   └── views.py           # Claim submission & review views
-├── config/                 # Main Django project configuration
-│   ├── settings.py        # Settings with WhiteNoise, PostgreSQL & security
-│   ├── urls.py            # Global URL routing & /health/ endpoint
-│   └── wsgi.py            # Production WSGI application callable
-├── items/                  # Item catalog, reporting, and search
-│   ├── forms.py           # ItemReportForm & CategoryForm with validation
-│   ├── models.py          # Item & Category models
-│   └── views.py           # Browse, search, filter, and detail views
-├── matches/                # Automated Lost & Found matching engine
-│   ├── engine.py          # Similarity scoring algorithm
-│   └── models.py          # ItemMatch model
-├── notifications/          # In-app notification system
-│   ├── context_processors.py  # Unread badge notification counters
-│   └── models.py          # Notification model
-├── reports/                # Reporting dashboard & CSV exports
-│   ├── urls.py            # Export & dashboard routes
-│   └── views.py           # Aggregations, print views, & CSV generators
-├── static/                 # Source CSS, JavaScript, and images
-├── staticfiles/            # Collected production static assets (WhiteNoise)
-├── templates/              # Semantic Bootstrap 5 Django templates
-│   ├── admin_dashboard/   # Admin dashboard, management tables & sidebar
-│   ├── items/             # Browse, report, detail templates
-│   ├── reports/           # Reports & print analytics dashboard
-│   └── base.html          # Global responsive navigation, badges, & footer
-├── .env.example            # Environment variables template
-├── DEPLOYMENT.md           # Production deployment checklist & guide
-├── Procfile                # Gunicorn process definition
-├── railway.json            # Railway deployment configuration
-├── requirements.txt        # Production dependencies
-└── manage.py               # Django management script
+Project-LostAndFound/
+├── backend/                  # Django APIs, authentication, and business logic
+│   ├── accounts/
+│   ├── claims/
+│   ├── config/
+│   ├── items/
+│   ├── matches/
+│   ├── notifications/
+│   ├── reports/
+│   ├── templates/              # Legacy screens pending React migration
+│   ├── manage.py
+│   └── requirements.txt
+├── frontend/                 # Next.js, React, and Tailwind interface
+│   ├── src/app/
+│   ├── src/components/
+│   └── package.json
+├── Procfile
+├── DEPLOYMENT.md
+└── README.md
 ```
 
 ---
@@ -136,34 +145,35 @@ Project/
 
 3. **Install dependencies:**
    ```bash
-   pip install -r requirements.txt
+   pip install -r backend/requirements.txt
    ```
 
 4. **Set up environment variables:**
    ```bash
-   cp .env.example .env
+   cp backend/.env.example backend/.env
    ```
+   Django does not load `.env` automatically in this project. Export the values in your shell or configure them in the hosting service. For PowerShell local development, set `$env:DJANGO_DEBUG = "True"` before starting Django.
 
 5. **Apply database migrations:**
    ```bash
-   python manage.py migrate
+   python backend/manage.py migrate
    ```
 
 6. **Collect static assets:**
    ```bash
-   python manage.py collectstatic --noinput
+   python backend/manage.py collectstatic --noinput
    ```
 
 7. **Create a superuser account:**
    ```bash
-   python manage.py createsuperuser
+   python backend/manage.py createsuperuser
    ```
 
 8. **Start the development server:**
    ```bash
-   python manage.py runserver
+   python backend/manage.py runserver
    ```
-   Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your web browser.
+   Open [http://localhost:3000](http://localhost:3000) for the Next.js frontend. Django runs at [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
 ---
 
@@ -173,8 +183,9 @@ Configure application settings by modifying `.env`:
 
 | Key | Description | Development Default | Production Recommendation |
 | :--- | :--- | :---: | :--- |
-| `DJANGO_SECRET_KEY` | Application cryptographic secret | *(development fallback)* | 60+ random characters |
-| `DJANGO_DEBUG` | Django debug mode | `True` | `False` |
+| `DJANGO_ENV` | Deployment environment marker | `development` | `production` |
+| `DJANGO_SECRET_KEY` | Application cryptographic secret | Development fallback only with debug enabled | Unique generated secret, 60+ random characters |
+| `DJANGO_DEBUG` | Django debug mode | Explicitly set `True` locally | `False` (default and enforced in recognized production environments) |
 | `DJANGO_ALLOWED_HOSTS` | Comma-separated allowed hostnames | `127.0.0.1,localhost` | Your domain or Railway public domain |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | Trusted origins for CSRF validation | *(Empty)* | `https://your-domain.com` |
 | `DATABASE_URL` | PostgreSQL database connection string | *(Empty, uses SQLite)* | `postgres://user:pass@host:port/db` |
@@ -189,22 +200,22 @@ Configure application settings by modifying `.env`:
 Run the full automated test suite (covering authentication, models, views, RBAC, matching, claims, security, reports, and CSV exports):
 
 ```bash
-python manage.py test
+python backend/manage.py test
 ```
 
 To run tests with detailed verbosity:
 ```bash
-python manage.py test -v 2
+python backend/manage.py test -v 2
 ```
 
 To run a specific app's tests:
 ```bash
-python manage.py test reports
-python manage.py test accounts
-python manage.py test items
-python manage.py test claims
-python manage.py test matches
-python manage.py test notifications
+python backend/manage.py test reports
+python backend/manage.py test accounts
+python backend/manage.py test items
+python backend/manage.py test claims
+python backend/manage.py test matches
+python backend/manage.py test notifications
 ```
 
 ---
@@ -214,7 +225,7 @@ python manage.py test notifications
 In development, Django serves static files directly. In production, **WhiteNoise** provides fast, compressed, and cached static file delivery directly from Gunicorn:
 
 ```bash
-python manage.py collectstatic --noinput
+python backend/manage.py collectstatic --noinput
 ```
 
 Assets are collected into the `staticfiles/` directory specified by `STATIC_ROOT`.
@@ -227,7 +238,7 @@ For complete, detailed instructions on deploying to Railway or any standard cont
 
 ### Quick Production Start:
 ```bash
-gunicorn config.wsgi:application --bind 0.0.0.0:8000
+cd backend && gunicorn config.wsgi:application --bind 0.0.0.0:8000
 ```
 
 ---

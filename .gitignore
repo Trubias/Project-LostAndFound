@@ -49,5 +49,10 @@ htmlcov/
 # MyPy
 .mypy_cache/
 
+# Next.js
+node_modules/
+.next/
+out/
+
 # Migrations (keep these — they are part of the project)
 # !**/migrations/*.py
