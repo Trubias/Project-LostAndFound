@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Admin Overview — Findly{% endblock %}
+{% block nav_admin %}active{% endblock %}
+
+{% block content %}
+<div class="container py-4 py-lg-5" style="max-width: 1480px;">
+  <header class="mb-4 mb-lg-5">
+    <div class="text-uppercase small fw-semibold text-success mb-2" style="letter-spacing:.14em;">
+      <i class="bi bi-stars me-1"></i> Workspace
+    </div>
+    <h1 class="display-5 fw-semibold mb-2">Admin overview <span class="visually-hidden">Administrator Dashboard</span></h1>
+    <p class="text-secondary fs-5 mb-0">A clear view of the lost and found activity in your community.</p>
+  </header>
+
+  <section aria-label="Community summary" class="row g-3 mb-4">
+    <div class="col-6 col-xl-3"><a class="card h-100 rounded-4 text-decoration-none text-reset" href="{% url 'accounts:admin_items' %}"><div class="card-body p-4"><div class="small text-uppercase text-secondary fw-semibold">All reports</div><div class="display-6 mt-2">{{ total_items }}</div></div></a></div>
+    <div class="col-6 col-xl-3"><a class="card h-100 rounded-4 text-decoration-none text-reset" href="{% url 'accounts:admin_items' %}?status=ACTIVE"><div class="card-body p-4"><div class="small text-uppercase text-secondary fw-semibold">Active reports</div><div class="display-6 mt-2">{{ total_active_items }}</div></div></a></div>
+    <div class="col-6 col-xl-3"><a class="card h-100 rounded-4 text-decoration-none text-reset" href="{% url 'accounts:admin_claims' %}?status=PENDING"><div class="card-body p-4"><div class="small text-uppercase text-secondary fw-semibold">Pending claims</div><div class="display-6 mt-2">{{ total_claims_pending }}</div></div></a></div>
+    <div class="col-6 col-xl-3"><a class="card h-100 rounded-4 text-decoration-none text-reset" href="{% url 'accounts:admin_matches' %}?status=PENDING"><div class="card-body p-4"><div class="small text-uppercase text-secondary fw-semibold">Open matches</div><div class="display-6 mt-2">{{ total_matches_pending }}</div></div></a></div>
+  </section>
+
+  <section aria-label="Admin sections" class="row g-3">
+    {% for label, url_name in admin_sections %}
+    <div class="col-md-6 col-xl-4"><a class="card h-100 rounded-4 text-decoration-none text-reset" href="{% url url_name %}"><div class="card-body p-4 d-flex align-items-center justify-content-between"><span class="fw-semibold">{{ label }}</span><i class="bi bi-arrow-right text-success" aria-hidden="true"></i></div></a></div>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}
