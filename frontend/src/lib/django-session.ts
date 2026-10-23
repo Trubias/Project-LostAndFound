@@ -1,7 +1,9 @@
 import { cookies } from 'next/headers';
+import { getDjangoBackendUrl } from './backend-url';
 
 export type DjangoSession = {
   authenticated: boolean;
+  available: boolean;
   name?: string;
   username?: string;
   avatar?: string | null;
@@ -10,16 +12,16 @@ export type DjangoSession = {
 };
 
 export async function getDjangoSession(): Promise<DjangoSession> {
-  const backend = process.env.DJANGO_URL ?? 'http://127.0.0.1:8000';
   try {
     const cookieHeader = (await cookies()).toString();
-    const response = await fetch(`${backend}/api/session/`, {
+    const response = await fetch(`${getDjangoBackendUrl()}/api/session/`, {
       headers: cookieHeader ? { cookie: cookieHeader } : undefined,
       cache: 'no-store',
+      signal: AbortSignal.timeout(5000),
     });
-    if (response.ok) return await response.json() as DjangoSession;
+    if (response.ok) return { ...await response.json() as DjangoSession, available: true };
   } catch {
-    // Keep the public header usable if Django is temporarily unavailable.
+    // The header remains usable, but callers can distinguish an outage from sign-out.
   }
-  return { authenticated: false };
+  return { authenticated: false, available: false };
 }

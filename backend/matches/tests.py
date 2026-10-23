@@ -57,6 +57,16 @@ class MatchingEngineUnitTests(TestCase):
         pts = match_engine.score_location(self.lost_phone, self.found_phone)
         self.assertEqual(pts, 25)
 
+    def test_filipino_and_english_item_terms_and_colors_normalize(self):
+        self.assertEqual(match_engine._tokenize('selpon cellphone smartphone'), {'phone'})
+        self.assertEqual(match_engine._tokenize('payong pula'), {'umbrella', 'red'})
+        self.assertEqual(match_engine._tokenize('itim bag'), {'black', 'bag'})
+
+    def test_title_score_tolerates_a_small_typo(self):
+        self.lost_phone.title = 'Black Samsng Phone'
+        self.found_phone.title = 'Black Samsung Phone'
+        self.assertGreaterEqual(match_engine.score_title(self.lost_phone, self.found_phone), 17)
+
     def test_structured_room_details_change_location_similarity(self):
         self.lost_phone.location = 'Computer Lab'
         self.lost_phone.room = 'ComLab 1'

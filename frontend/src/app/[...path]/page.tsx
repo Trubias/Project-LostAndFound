@@ -13,6 +13,7 @@ import { AdminWorkspaceShell } from '@/features/admin/workspace-shell';
 import { UserWorkspaceShell } from '@/features/user/workspace-shell';
 import { ExploreItemsSection } from '@/features/user/explore-items';
 import { UserRecordsTable } from '@/features/user/records-table';
+import { getDjangoBackendUrl } from '@/lib/backend-url';
 
 type LinkData = { label: string; href: string };
 type RecordData = { id: number; title: string; subtitle?: string; badge?: string; type?: string; image?: string | null; href?: string; meta?: string[]; reporterName?: string; reporterUsername?: string; reporterAvatar?: string | null };
@@ -20,15 +21,15 @@ type UserTableRow = { id: number; name: string; username: string; email: string;
 type PageData = { mode: string; title: string; eyebrow?: string; userName?: string; summary?: string; href?: string; action?: string; actionLabel?: string; fields?: FormField[]; records?: RecordData[]; exploreItems?: { lost: RecordData[]; found: RecordData[] }; adminActivity?: AdminActivity[]; categoryBreakdown?: CategoryMetric[]; claimStatusCounts?: ClaimMetric[]; tableRows?: UserTableRow[]; stats?: OverviewStat[]; trends?: ReportTrends; links?: LinkData[]; categories?: { id: number; name: string }[]; image?: string | null; unreadCount?: number; page?: number; num_pages?: number; has_previous?: boolean; has_next?: boolean; filters?: { q?: string; type?: string; role?: string; status?: string; category?: string; handoff?: string } };
 
 async function getPage(path: string, filters: { q?: string; type?: string; role?: string; status?: string; category?: string; handoff?: string; page?: string }): Promise<PageData | null> {
-  const backend = process.env.DJANGO_URL ?? 'http://127.0.0.1:8000';
   try {
     const query = new URLSearchParams({ path });
     for (const key of ['q', 'type', 'role', 'status', 'category', 'handoff', 'page'] as const) if (filters[key]) query.set(key, filters[key]!);
     const cookieHeader = (await cookies()).toString();
-    const response = await fetch(`${backend}/api/frontend-page/?${query}`, { headers: cookieHeader ? { cookie: cookieHeader } : undefined, cache: 'no-store' });
-    if (!response.ok) return null;
+    const response = await fetch(`${getDjangoBackendUrl()}/api/frontend-page/?${query}`, { headers: cookieHeader ? { cookie: cookieHeader } : undefined, cache: 'no-store', signal: AbortSignal.timeout(8000) });
+    if (response.status === 404) return null;
+    if (!response.ok) return { mode: 'unavailable', title: 'Service temporarily unavailable', summary: 'We could not reach the application service. Please retry in a moment.' };
     return await response.json() as PageData;
-  } catch { return null; }
+  } catch { return { mode: 'unavailable', title: 'Service temporarily unavailable', summary: 'We could not reach the application service. Please retry in a moment.' }; }
 }
 
 export default async function BackendPage({ params, searchParams }: { params: Promise<{ path: string[] }>; searchParams: Promise<{ q?: string; type?: string; role?: string; status?: string; category?: string; handoff?: string; page?: string; error?: string }> }) {
@@ -36,6 +37,7 @@ export default async function BackendPage({ params, searchParams }: { params: Pr
   const path = `/${segments.join('/')}`;
   const [data, session] = await Promise.all([getPage(path, query), getDjangoSession()]);
   if (!data) notFound();
+  if (data.mode === 'unavailable') return <main className="min-h-screen bg-[#f8f9f6]"><SiteHeader/><section className="mx-auto max-w-3xl px-6 py-20 text-center"><h1 className="text-3xl font-semibold">Service temporarily unavailable</h1><p className="mt-3 text-sm text-[#718078]">We could not reach the application service. Please retry in a moment.</p><Link href={path} className="mt-6 inline-flex rounded-xl bg-[#274c3b] px-5 py-3 text-sm font-semibold text-white">Retry</Link></section><SiteFooter/></main>;
   const pageHref = (page: number) => {
     const next = new URLSearchParams();
     for (const key of ['q', 'type', 'role', 'status', 'category', 'handoff'] as const) if (query[key]) next.set(key, query[key]!);

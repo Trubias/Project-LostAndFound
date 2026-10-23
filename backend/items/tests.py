@@ -4,13 +4,80 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from datetime import date
+from datetime import time
 from PIL import Image
 from unittest.mock import patch
 
 from accounts.models import Profile
+from claims.models import Claim
 from items.models import Category, Item
 from items.forms import ItemForm, CategoryForm
 from items.locations import BUILDING_CHOICES, LOCATION_CHOICES, ROOM_CHOICES
+
+
+class ItemDetailPreciseLocationPrivacyTests(TestCase):
+    def setUp(self):
+        self.reporter = User.objects.create_user(username='privacy_reporter', password='pass12345')
+        self.claimant = User.objects.create_user(username='privacy_claimant', password='pass12345')
+        self.other_user = User.objects.create_user(username='privacy_other', password='pass12345')
+        category = Category.objects.create(name='Privacy test category')
+        self.item = Item.objects.create(
+            title='Privacy test found item',
+            description='A test item for location privacy checks.',
+            item_type=Item.TYPE_FOUND,
+            category=category,
+            location='Main Library',
+            building='PRIVATE-BUILDING-742',
+            room='PRIVATE-ROOM-19',
+            workstation='PRIVATE-DESK-5',
+            date_occurred=date(2026, 10, 1),
+            approximate_time=time(15, 17),
+            reporter=self.reporter,
+        )
+        self.url = reverse('items:item_detail', args=[self.item.pk])
+
+    def assert_precise_location_visible(self, response):
+        self.assertContains(response, 'PRIVATE-BUILDING-742')
+        self.assertContains(response, 'PRIVATE-ROOM-19')
+        self.assertContains(response, 'PRIVATE-DESK-5')
+        self.assertContains(response, '3:17 PM')
+
+    def assert_precise_location_hidden(self, response):
+        self.assertContains(response, 'Main Library')
+        self.assertNotContains(response, 'PRIVATE-BUILDING-742')
+        self.assertNotContains(response, 'PRIVATE-ROOM-19')
+        self.assertNotContains(response, 'PRIVATE-DESK-5')
+        self.assertNotContains(response, '3:17 PM')
+
+    def test_anonymous_and_unrelated_users_cannot_see_precise_details(self):
+        self.assert_precise_location_hidden(self.client.get(self.url))
+        self.client.force_login(self.other_user)
+        self.assert_precise_location_hidden(self.client.get(self.url))
+
+    def test_reporter_can_see_precise_details(self):
+        self.client.force_login(self.reporter)
+        self.assert_precise_location_visible(self.client.get(self.url))
+
+    def test_pending_claimant_cannot_see_precise_details(self):
+        Claim.objects.create(
+            item=self.item,
+            claimant=self.claimant,
+            message='I can describe the item and where I lost it.',
+            proof_description='It has a test-only identifying detail.',
+        )
+        self.client.force_login(self.claimant)
+        self.assert_precise_location_hidden(self.client.get(self.url))
+
+    def test_approved_claimant_can_see_precise_details(self):
+        Claim.objects.create(
+            item=self.item,
+            claimant=self.claimant,
+            message='I can describe the item and where I lost it.',
+            proof_description='It has a test-only identifying detail.',
+            status=Claim.STATUS_APPROVED,
+        )
+        self.client.force_login(self.claimant)
+        self.assert_precise_location_visible(self.client.get(self.url))
 
 
 class ItemsSprint2Tests(TestCase):

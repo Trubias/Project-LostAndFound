@@ -332,6 +332,39 @@ def _reject_claim(claim, reviewer, notes):
         return True
 
 
+def _record_handoff_confirmation(claim_id, confirmer):
+    """Serialize party confirmations so concurrent handoff posts cannot overwrite one another."""
+    with transaction.atomic():
+        claim = Claim.objects.select_for_update().select_related('item', 'claimant').get(pk=claim_id)
+        if (
+            claim.status != Claim.STATUS_APPROVED
+            or not claim.handoff_at
+            or not claim.handoff_confirmed_by_claimant_at
+            or claim.handoff_completed_at
+        ):
+            return claim, False
+
+        is_claimant = claim.claimant_id == confirmer.pk
+        is_reporter = claim.item.reporter_id == confirmer.pk
+        if not (is_claimant or is_reporter):
+            return claim, False
+
+        field = 'handoff_returned_by_claimant_at' if is_claimant else 'handoff_returned_by_reporter_at'
+        if getattr(claim, field):
+            return claim, False
+
+        setattr(claim, field, timezone.now())
+        if claim.handoff_returned_by_claimant_at and claim.handoff_returned_by_reporter_at:
+            claim.handoff_completed_at = timezone.now()
+        claim.save(update_fields=[
+            'handoff_returned_by_claimant_at', 'handoff_returned_by_reporter_at',
+            'handoff_completed_at', 'updated_at',
+        ])
+        notif_svc.notify_handoff_returned(claim, confirmed_by=confirmer)
+        record_event(confirmer, 'handoff.return_confirmed', claim, f'@{confirmer.username} confirmed the physical handoff for claim #{claim.pk}.')
+        return claim, True
+
+
 @login_required(login_url='/login/')
 def schedule_handoff_view(request, claim_id):
     """Let the found-item reporter propose a public pickup appointment."""
@@ -354,20 +387,28 @@ def schedule_handoff_view(request, claim_id):
         }
     form = HandoffScheduleForm(request.POST or None, initial=initial)
     if request.method == 'POST' and form.is_valid():
-        claim.handoff_location = form.cleaned_data['handoff_location'].strip()
-        claim.handoff_at = form.cleaned_data['handoff_at']
-        claim.handoff_instructions = form.cleaned_data['handoff_instructions'].strip()
-        claim.handoff_change_request = ''
-        claim.handoff_confirmed_by_claimant_at = None
-        claim.handoff_returned_by_claimant_at = None
-        claim.handoff_returned_by_reporter_at = None
-        claim.save(update_fields=[
-            'handoff_location', 'handoff_at', 'handoff_instructions',
-            'handoff_change_request', 'handoff_confirmed_by_claimant_at',
-            'handoff_returned_by_claimant_at', 'handoff_returned_by_reporter_at', 'updated_at',
-        ])
-        notif_svc.notify_handoff_scheduled(claim)
-        record_event(request.user, 'handoff.scheduled', claim, f'Pickup plan set for claim #{claim.pk} at {claim.handoff_location}.', {'handoff_at': claim.handoff_at.isoformat()})
+        with transaction.atomic():
+            claim = Claim.objects.select_for_update().select_related('item', 'claimant').get(pk=claim_id)
+            if claim.status != Claim.STATUS_APPROVED or claim.handoff_completed_at:
+                messages.error(request, 'This claim is no longer available for a pickup plan.')
+                return redirect('claims:claim_detail', claim_id=claim.pk)
+            if form.cleaned_data['handoff_at'] <= timezone.now():
+                form.add_error('handoff_at', 'Choose a future date and time.')
+                return render(request, 'claims/handoff_schedule.html', {'claim': claim, 'form': form})
+            claim.handoff_location = form.cleaned_data['handoff_location'].strip()
+            claim.handoff_at = form.cleaned_data['handoff_at']
+            claim.handoff_instructions = form.cleaned_data['handoff_instructions'].strip()
+            claim.handoff_change_request = ''
+            claim.handoff_confirmed_by_claimant_at = None
+            claim.handoff_returned_by_claimant_at = None
+            claim.handoff_returned_by_reporter_at = None
+            claim.save(update_fields=[
+                'handoff_location', 'handoff_at', 'handoff_instructions',
+                'handoff_change_request', 'handoff_confirmed_by_claimant_at',
+                'handoff_returned_by_claimant_at', 'handoff_returned_by_reporter_at', 'updated_at',
+            ])
+            notif_svc.notify_handoff_scheduled(claim)
+            record_event(request.user, 'handoff.scheduled', claim, f'Pickup plan set for claim #{claim.pk} at {claim.handoff_location}.', {'handoff_at': claim.handoff_at.isoformat()})
         messages.success(request, 'Pickup plan saved. The claimant has been notified to confirm it.')
         return redirect('claims:claim_detail', claim_id=claim.pk)
     return render(request, 'claims/handoff_schedule.html', {'claim': claim, 'form': form})
@@ -388,25 +429,30 @@ def respond_handoff_view(request, claim_id):
 
     form = HandoffResponseForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
-        if form.cleaned_data['action'] == 'confirm':
-            claim.handoff_confirmed_by_claimant_at = timezone.now()
-            claim.handoff_change_request = ''
-            claim.save(update_fields=['handoff_confirmed_by_claimant_at', 'handoff_change_request', 'updated_at'])
-            notif_svc.notify_handoff_confirmed(claim)
-            record_event(request.user, 'handoff.plan_confirmed', claim, f'Claimant confirmed the pickup plan for claim #{claim.pk}.')
-            messages.success(request, 'Pickup plan confirmed. Coordinate the handoff at the agreed public location.')
-        else:
-            claim.handoff_confirmed_by_claimant_at = None
-            claim.handoff_change_request = form.cleaned_data['handoff_change_request'].strip()
-            claim.handoff_returned_by_claimant_at = None
-            claim.handoff_returned_by_reporter_at = None
-            claim.save(update_fields=[
-                'handoff_confirmed_by_claimant_at', 'handoff_change_request',
-                'handoff_returned_by_claimant_at', 'handoff_returned_by_reporter_at', 'updated_at',
-            ])
-            notif_svc.notify_handoff_change_requested(claim)
-            record_event(request.user, 'handoff.change_requested', claim, f'Claimant requested a pickup-plan change for claim #{claim.pk}.')
-            messages.success(request, 'Your suggested change was sent to the item reporter.')
+        with transaction.atomic():
+            claim = Claim.objects.select_for_update().select_related('item', 'claimant').get(pk=claim_id)
+            if claim.status != Claim.STATUS_APPROVED or not claim.handoff_at or claim.handoff_completed_at:
+                messages.error(request, 'This pickup plan is no longer available for a response.')
+                return redirect('claims:claim_detail', claim_id=claim.pk)
+            if form.cleaned_data['action'] == 'confirm':
+                claim.handoff_confirmed_by_claimant_at = timezone.now()
+                claim.handoff_change_request = ''
+                claim.save(update_fields=['handoff_confirmed_by_claimant_at', 'handoff_change_request', 'updated_at'])
+                notif_svc.notify_handoff_confirmed(claim)
+                record_event(request.user, 'handoff.plan_confirmed', claim, f'Claimant confirmed the pickup plan for claim #{claim.pk}.')
+                messages.success(request, 'Pickup plan confirmed. Coordinate the handoff at the agreed public location.')
+            else:
+                claim.handoff_confirmed_by_claimant_at = None
+                claim.handoff_change_request = form.cleaned_data['handoff_change_request'].strip()
+                claim.handoff_returned_by_claimant_at = None
+                claim.handoff_returned_by_reporter_at = None
+                claim.save(update_fields=[
+                    'handoff_confirmed_by_claimant_at', 'handoff_change_request',
+                    'handoff_returned_by_claimant_at', 'handoff_returned_by_reporter_at', 'updated_at',
+                ])
+                notif_svc.notify_handoff_change_requested(claim)
+                record_event(request.user, 'handoff.change_requested', claim, f'Claimant requested a pickup-plan change for claim #{claim.pk}.')
+                messages.success(request, 'Your suggested change was sent to the item reporter.')
         return redirect('claims:claim_detail', claim_id=claim.pk)
     return render(request, 'claims/handoff_response.html', {'claim': claim, 'form': form})
 
@@ -420,25 +466,18 @@ def confirm_handoff_view(request, claim_id):
         return redirect('claims:claim_detail', claim_id=claim.pk)
     is_reporter = claim.item.reporter_id == request.user.pk
     is_claimant = claim.claimant_id == request.user.pk
-    if not (is_reporter or is_claimant or is_admin_user(request.user)):
+    # Staff may review a case, but must not attest on behalf of either party.
+    if not (is_reporter or is_claimant):
         return render(request, '403.html', status=403)
     if not claim.handoff_confirmed_by_claimant_at:
         messages.error(request, 'The claimant must confirm the pickup plan before recording the handoff.')
         return redirect('claims:claim_detail', claim_id=claim.pk)
     if request.method != 'POST':
         return render(request, 'claims/confirm_handoff.html', {'claim': claim})
-    if is_claimant:
-        claim.handoff_returned_by_claimant_at = claim.handoff_returned_by_claimant_at or timezone.now()
-    else:
-        claim.handoff_returned_by_reporter_at = claim.handoff_returned_by_reporter_at or timezone.now()
-    if claim.handoff_returned_by_claimant_at and claim.handoff_returned_by_reporter_at:
-        claim.handoff_completed_at = timezone.now()
-    claim.save(update_fields=[
-        'handoff_returned_by_claimant_at', 'handoff_returned_by_reporter_at',
-        'handoff_completed_at', 'updated_at',
-    ])
-    notif_svc.notify_handoff_returned(claim, confirmed_by=request.user)
-    record_event(request.user, 'handoff.return_confirmed', claim, f'@{request.user.username} confirmed the physical handoff for claim #{claim.pk}.')
+    claim, changed = _record_handoff_confirmation(claim_id, request.user)
+    if not changed:
+        messages.info(request, 'This handoff confirmation was already recorded or is no longer available.')
+        return redirect('claims:claim_detail', claim_id=claim.pk)
     if claim.handoff_completed_at:
         messages.success(request, 'Both people confirmed the return. The handoff is complete.')
     else:

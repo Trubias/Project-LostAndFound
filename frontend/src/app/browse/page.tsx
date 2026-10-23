@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowRight, ArrowUpRight, CalendarDays, MapPin, PackageSearch, Search, SlidersHorizontal } from 'lucide-react';
 import { SiteFooter, SiteHeader } from '@/components/site-header';
 import { getDjangoSession } from '@/lib/django-session';
+import { getDjangoBackendUrl } from '@/lib/backend-url';
 
 type Item = {
   id: number;
@@ -34,14 +35,13 @@ type Payload = {
 type BrowseParams = { q?: string; type?: string; category?: string; page?: string; submitted?: string };
 
 async function getItems(search: string, kind: string, category: string, page: string): Promise<Payload | null> {
-  const base = process.env.DJANGO_URL ?? 'http://127.0.0.1:8000';
   try {
     const params = new URLSearchParams();
     if (search) params.set('q', search);
     if (kind) params.set('type', kind);
     if (category) params.set('category', category);
     if (page) params.set('page', page);
-    const response = await fetch(`${base}/api/items/?${params.toString()}`, { cache: 'no-store' });
+    const response = await fetch(`${getDjangoBackendUrl()}/api/items/?${params.toString()}`, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
     if (!response.ok) return null;
     return await response.json() as Payload;
   } catch {
@@ -80,7 +80,7 @@ export default async function BrowsePage({ searchParams }: { searchParams: Promi
         {session.authenticated ? <div className="flex gap-2">
           <Link href="/items/report/lost/" className="rounded-xl border border-[#e2e8e1] bg-white px-4 py-3 text-xs font-semibold text-[#405148]">Report lost</Link>
           <Link href="/items/report/found/" className="rounded-xl bg-[#274c3b] px-4 py-3 text-xs font-semibold text-white">Report found</Link>
-        </div> : <Link href="/login/" className="text-sm font-semibold text-[#55705d]">Sign in to view your activity <ArrowRight size={15} className="ml-1 inline"/></Link>}
+        </div> : session.available ? <Link href="/login/" className="text-sm font-semibold text-[#55705d]">Sign in to view your activity <ArrowRight size={15} className="ml-1 inline"/></Link> : <p role="status" className="text-sm text-[#8b6b45]">Account service is temporarily unavailable.</p>}
       </div>
 
       {params.submitted === '1' ? <p role="status" className="mt-6 rounded-xl border border-[#dce8dc] bg-[#eff5eb] px-5 py-4 text-sm font-medium text-[#42664b]">Your {type === 'LOST' ? 'lost' : 'found'} report was posted. It is now visible in Explore Items.</p> : null}

@@ -3,7 +3,7 @@ Sprint 4 — Claims & Verification Tests
 ======================================
 Tests cover all 21 required scenarios plus additional edge cases.
 """
-from datetime import date
+from datetime import date, timedelta
 from unittest.mock import patch
 
 from django.test import TestCase, Client
@@ -643,3 +643,39 @@ class ItemDetailClaimIntegrationTests(ClaimsBaseTestCase):
         url = reverse('items:item_detail', args=[self.archived_item.pk])
         response = self.client.get(url)
         self.assertFalse(response.context['can_claim'])
+
+
+class HandoffConfirmationTests(ClaimsBaseTestCase):
+    def setUp(self):
+        super().setUp()
+        self.claim = self.make_claim(self.user_b, status=Claim.STATUS_APPROVED)
+        self.claim.handoff_location = 'Library front desk'
+        self.claim.handoff_at = timezone.now() + timedelta(days=1)
+        self.claim.handoff_confirmed_by_claimant_at = timezone.now()
+        self.claim.save()
+
+    def test_only_reporter_and_claimant_can_confirm_the_physical_handoff(self):
+        self.login_as(self.admin_user)
+        response = self.client.post(reverse('claims:confirm_handoff', args=[self.claim.pk]))
+        self.assertEqual(response.status_code, 403)
+        self.claim.refresh_from_db()
+        self.assertIsNone(self.claim.handoff_returned_by_reporter_at)
+        self.assertIsNone(self.claim.handoff_completed_at)
+
+    def test_both_parties_must_confirm_and_duplicate_posts_are_idempotent(self):
+        url = reverse('claims:confirm_handoff', args=[self.claim.pk])
+        self.login_as(self.user_b)
+        self.assertEqual(self.client.post(url).status_code, 302)
+        self.claim.refresh_from_db()
+        self.assertIsNotNone(self.claim.handoff_returned_by_claimant_at)
+        self.assertIsNone(self.claim.handoff_returned_by_reporter_at)
+        self.assertIsNone(self.claim.handoff_completed_at)
+
+        self.login_as(self.user_a)
+        self.assertEqual(self.client.post(url).status_code, 302)
+        self.claim.refresh_from_db()
+        self.assertIsNotNone(self.claim.handoff_completed_at)
+        completed_at = self.claim.handoff_completed_at
+        self.assertEqual(self.client.post(url).status_code, 302)
+        self.claim.refresh_from_db()
+        self.assertEqual(self.claim.handoff_completed_at, completed_at)

@@ -319,6 +319,7 @@ def item_detail_view(request, pk):
     can_archive = False
     can_restore = False
     can_claim = False
+    can_view_precise_location = False
     has_pending_claim = False
     user_claim = None
     item_claims_count = 0
@@ -326,6 +327,7 @@ def item_detail_view(request, pk):
     if request.user.is_authenticated:
         is_owner = item.reporter == request.user
         is_admin = is_admin_user(request.user)
+        can_view_precise_location = is_owner or is_admin
         can_edit = is_owner or is_admin
         if item.is_active():
             can_archive = is_owner or is_admin
@@ -344,6 +346,12 @@ def item_detail_view(request, pk):
             elif not existing or existing.status in [ClaimModel.STATUS_REJECTED, ClaimModel.STATUS_WITHDRAWN]:
                 can_claim = True
 
+        if not can_view_precise_location and item.is_found():
+            from claims.models import Claim as ClaimModel
+            can_view_precise_location = ClaimModel.objects.filter(
+                item=item, claimant=request.user, status=ClaimModel.STATUS_APPROVED
+            ).exists()
+
         # Count claims for item reporter / admin
         if is_owner or is_admin:
             from claims.models import Claim as ClaimModel
@@ -354,6 +362,7 @@ def item_detail_view(request, pk):
         'can_edit': can_edit,
         'can_archive': can_archive,
         'can_restore': can_restore,
+        'can_view_precise_location': can_view_precise_location,
         'can_claim': can_claim,
         'has_pending_claim': has_pending_claim,
         'user_claim': user_claim,
@@ -497,6 +506,9 @@ def archive_item_view(request, pk):
         return render(request, '403.html', status=403)
 
     if request.method == 'POST':
+        if item.status != Item.STATUS_ACTIVE:
+            messages.info(request, 'This item is already archived.')
+            return redirect('items:my_items')
         item.status = Item.STATUS_ARCHIVED
         item.save()
         record_event(request.user, 'item.archived', item, f'@{request.user.username} archived item report #{item.pk}: "{item.title}".')
@@ -524,6 +536,9 @@ def restore_item_view(request, pk):
         return render(request, '403.html', status=403)
 
     if request.method == 'POST':
+        if item.status != Item.STATUS_ARCHIVED:
+            messages.info(request, 'This item is already active.')
+            return redirect('items:my_items')
         item.status = Item.STATUS_ACTIVE
         item.save()
         record_event(request.user, 'item.restored', item, f'@{request.user.username} restored item report #{item.pk}: "{item.title}".')

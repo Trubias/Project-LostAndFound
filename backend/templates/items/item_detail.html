@@ -68,11 +68,15 @@
                 <div class="small text-muted fw-semibold">Location</div>
                 <div class="fw-medium">{{ item.location }}</div>
                 {% if item.building or item.room or item.workstation %}
-                <div class="small text-muted">
+                  {% if can_view_precise_location %}
+                  <div class="small text-muted">
                   {% if item.building %}{{ item.building }}{% endif %}
                   {% if item.room %}{% if item.building %} · {% endif %}{{ item.room }}{% endif %}
                   {% if item.workstation %}{% if item.building or item.room %} · {% endif %}{{ item.workstation }}{% endif %}
-                </div>
+                  </div>
+                  {% else %}
+                  <div class="small text-muted">Exact pickup details are shared after ownership is approved.</div>
+                  {% endif %}
                 {% endif %}
               </div>
             </div>
@@ -83,7 +87,7 @@
               <div>
                 <div class="small text-muted fw-semibold">Date {{ item.get_item_type_display }}</div>
                 <div class="fw-medium">{{ item.date_occurred|date:"F d, Y" }}</div>
-                {% if item.approximate_time %}<div class="small text-muted">Around {{ item.approximate_time|time:"g:i A" }}</div>{% endif %}
+                {% if can_view_precise_location and item.approximate_time %}<div class="small text-muted">Around {{ item.approximate_time|time:"g:i A" }}</div>{% endif %}
               </div>
             </div>
           </div>

@@ -66,7 +66,7 @@ class ReviewClaimForm(forms.Form):
     action = forms.ChoiceField(
         label='Decision',
         choices=[
-            ('approve', 'Approve and resolve item'),
+            ('approve', 'Approve claim'),
             ('reject', 'Reject this claim'),
         ],
         widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),

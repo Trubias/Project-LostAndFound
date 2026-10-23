@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server';
-
-const backend = process.env.DJANGO_URL ?? 'http://127.0.0.1:8000';
+import { getDjangoBackendUrl } from '@/lib/backend-url';
 
 async function forward(request: NextRequest, path: string[]) {
+  const backend = getDjangoBackendUrl();
   const target = `${backend}/${path.join('/')}/${request.nextUrl.search}`;
   const headers = new Headers(request.headers);
   headers.delete('connection');
@@ -20,6 +20,7 @@ async function forward(request: NextRequest, path: string[]) {
     headers,
     body: request.method === 'GET' || request.method === 'HEAD' ? undefined : await request.arrayBuffer(),
     redirect: 'manual',
+    signal: AbortSignal.timeout(8000),
   });
 
   const outHeaders = new Headers();
@@ -34,10 +35,26 @@ async function forward(request: NextRequest, path: string[]) {
 type RouteContext = { params: Promise<{ path: string[] }> };
 export async function POST(request: NextRequest, context: RouteContext) {
   const { path } = await context.params;
-  return forward(request, path);
+  try {
+    return await forward(request, path);
+  } catch (error) {
+    return backendError(error);
+  }
 }
 
 export async function GET(request: NextRequest, context: RouteContext) {
   const { path } = await context.params;
-  return forward(request, path);
+  try {
+    return await forward(request, path);
+  } catch (error) {
+    return backendError(error);
+  }
+}
+
+function backendError(error: unknown) {
+  const timedOut = error instanceof Error && error.name === 'TimeoutError';
+  return Response.json(
+    { detail: timedOut ? 'The service took too long to respond. Please try again.' : 'The service is temporarily unavailable. Please try again.' },
+    { status: timedOut ? 504 : 503 },
+  );
 }
