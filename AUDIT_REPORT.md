@@ -322,10 +322,11 @@ This follow-up was implemented on the existing `codex/explore-item-claim-cta` br
 - `npm audit`: zero vulnerabilities.
 - `py -m pip_audit -r requirements.txt`: zero reported vulnerabilities.
 - `git diff --check`: passed; only Git line-ending conversion notices were emitted.
+- GitHub Actions on PR #4: both `verify` runs and both PostgreSQL service runs passed after correcting a missing test import and removing a PostgreSQL-incompatible hard-coded primary-key expectation.
 
 ### Remaining follow-up / environment limits
 
-- Run the PostgreSQL-specific concurrency tests in CI and inspect that job result; SQLite cannot validate row locks.
+- PostgreSQL CI now executes and passes the row-lock/concurrency checks; local SQLite still cannot validate row-lock behavior.
 - Login brute-force throttling still needs a shared production cache/rate-limit store; an in-memory limiter would not protect multiple workers. Add after that shared service is configured.
 - Decide school policy for email verification, MFA, reporter review authority, handoff evidence, and personal-data retention/export before enforcing rules.
 - Validate production health, email/password reset delivery, persistent media, backups/restores, and actual hosted browser-to-database flows in the authorized hosting environment. No deployment or merge was made as part of this audit.
