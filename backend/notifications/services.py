@@ -21,6 +21,7 @@ def create_notification(
     message,
     related_item=None,
     related_claim=None,
+    related_match=None,
     allow_repeat=False,
 ):
     """
@@ -37,6 +38,7 @@ def create_notification(
         notification_type=notification_type,
         related_item=related_item,
         related_claim=related_claim,
+        related_match=related_match,
     ).first() if not allow_repeat else None
 
     if existing:
@@ -49,6 +51,7 @@ def create_notification(
         message=message,
         related_item=related_item,
         related_claim=related_claim,
+        related_match=related_match,
     )
     return notification, True
 
@@ -84,8 +87,9 @@ def notify_claim_approved(claim):
         notification_type=Notification.TYPE_CLAIM_APPROVED,
         title='Your Claim Has Been Approved',
         message=(
-            f'Great news! Your claim for the item "{claim.item.title}" '
-            f'has been approved. The item has been marked as resolved.'
+            f'Your claim for "{claim.item.title}" has been approved. '
+            'The item has not been returned yet. Check your claim for the pickup plan; '
+            'the handoff is complete only after both you and the reporter confirm it.'
         ),
         related_item=claim.item,
         related_claim=claim,
@@ -236,6 +240,7 @@ def notify_possible_match(match):
             f'Review the match to confirm or dismiss it.'
         ),
         related_item=match.lost_item,
+        related_match=match,
     )
 
     found_notif, _ = create_notification(
@@ -250,6 +255,7 @@ def notify_possible_match(match):
             f'Review the match to confirm or dismiss it.'
         ),
         related_item=match.found_item,
+        related_match=match,
     )
 
     return lost_notif, found_notif
@@ -280,4 +286,5 @@ def notify_match_confirmed(match, confirming_user):
             if other_reporter == match.found_item.reporter
             else match.lost_item
         ),
+        related_match=match,
     )

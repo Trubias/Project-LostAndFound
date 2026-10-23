@@ -92,6 +92,12 @@
               </a>
               {% endif %}
 
+              {% if notif.related_match %}
+              <a href="{% url 'matches:detail' notif.related_match.pk %}" class="badge bg-light text-dark border text-decoration-none rounded-pill" style="font-size: 0.72rem;">
+                <i class="bi bi-lightning me-1"></i>Match #{{ notif.related_match.pk }}
+              </a>
+              {% endif %}
+
               <div class="ms-auto d-flex align-items-center gap-1">
                 {% if not notif.is_read %}
                 <form method="post" action="{% url 'notifications:mark_read' notif.pk %}" class="d-inline">

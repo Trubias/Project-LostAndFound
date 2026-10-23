@@ -416,7 +416,13 @@ def frontend_page_data(request):
             if item.item_type == Item.TYPE_FOUND:
                 links.append({'label': 'View claims', 'href': f'/claims/item/{item.pk}'})
         elif item.item_type == Item.TYPE_FOUND and item.status == Item.STATUS_ACTIVE:
-            links.append({'label': 'Submit a claim', 'href': f'/claims/item/{item.pk}/submit'})
+            existing_claim = Claim.objects.filter(item=item, claimant=request.user).exclude(
+                status__in=[Claim.STATUS_REJECTED, Claim.STATUS_WITHDRAWN]
+            ).order_by('-created_at').first() if request.user.is_authenticated else None
+            if existing_claim:
+                links.append({'label': 'View your claim', 'href': f'/claims/{existing_claim.pk}'})
+            else:
+                links.append({'label': 'Submit a claim', 'href': f'/claims/item/{item.pk}/submit'})
         if request.user.is_authenticated and not is_owner and item.status == Item.STATUS_ACTIVE:
             links.append({'label': 'Report a concern', 'href': f'/items/{item.pk}/report'})
         is_approved_claimant = request.user.is_authenticated and Claim.objects.filter(item=item, claimant=request.user, status=Claim.STATUS_APPROVED).exists()
@@ -530,7 +536,7 @@ def frontend_page_data(request):
             return JsonResponse(protected)
         claim = Claim.objects.select_related('item').filter(pk=claim_handoff_complete.group(1), status=Claim.STATUS_APPROVED).first()
         is_admin = request.user.is_superuser or getattr(getattr(request.user, 'profile', None), 'role', None) == Profile.ROLE_ADMIN
-        if not claim or not claim.handoff_at or (claim.item.reporter_id != request.user.pk and claim.claimant_id != request.user.pk and not is_admin):
+        if not claim or not claim.handoff_at or (claim.item.reporter_id != request.user.pk and claim.claimant_id != request.user.pk):
             return JsonResponse({'detail':'Handoff confirmation is not available.'}, status=404)
         return JsonResponse({'mode':'action','title':'Confirm item handoff?','summary':'Only confirm after the item has physically changed hands. Both the claimant and reporter must confirm before the claim is marked complete.','action':path,'actionLabel':'Confirm item received','fields':[]})
 
@@ -735,7 +741,7 @@ def frontend_page_data(request):
         protected = _protected(request, admin=True)
         if protected:
             return JsonResponse(protected)
-        notification = Notification.objects.select_related('recipient','related_item','related_claim').filter(pk=admin_notification_detail.group(1)).first()
+        notification = Notification.objects.select_related('recipient','related_item','related_claim','related_match').filter(pk=admin_notification_detail.group(1)).first()
         if not notification:
             return JsonResponse({'detail':'Notification not found.'}, status=404)
         details = [('Recipient', f'{notification.recipient.get_full_name() or notification.recipient.username} (@{notification.recipient.username})'), ('Type', notification.get_notification_type_display()), ('Status', 'Read' if notification.is_read else 'Unread'), ('Created', timezone.localtime(notification.created_at).strftime('%b %d, %Y · %I:%M %p'))]
@@ -743,6 +749,8 @@ def frontend_page_data(request):
             details.append(('Related item', notification.related_item.title))
         if notification.related_claim_id:
             details.append(('Related claim', f'#{notification.related_claim_id}'))
+        if notification.related_match_id:
+            details.append(('Related match', f'#{notification.related_match_id}'))
         return JsonResponse({'mode':'detail','title':notification.title,'summary':notification.message,'stats':_stats(details)})
 
     notification_detail=re.fullmatch(r'/notifications/(\d+)',path)
@@ -750,12 +758,16 @@ def frontend_page_data(request):
         protected=_protected(request)
         if protected:
             return JsonResponse(protected)
-        notification=Notification.objects.filter(pk=notification_detail.group(1),recipient=request.user).first()
+        notification=Notification.objects.select_related('related_match','related_claim').filter(pk=notification_detail.group(1),recipient=request.user).first()
         if not notification:
             return JsonResponse({'detail':'Notification not found.'},status=404)
         links = [{'label':'Notifications','href':'/notifications'}]
         if not notification.is_read:
             links.insert(0, {'label':'Mark as read','href':f'/notifications/{notification.pk}/read'})
+        if notification.related_match_id:
+            links.insert(0, {'label':'Review possible match','href':f'/matches/{notification.related_match_id}'})
+        elif notification.related_claim_id:
+            links.insert(0, {'label':'View claim','href':f'/claims/{notification.related_claim_id}'})
         return JsonResponse({'mode':'detail','title':notification.title,'eyebrow':'Read' if notification.is_read else 'Unread','summary':notification.message,'links':links})
 
     notification_action = re.fullmatch(r'/notifications/(\d+)/(read|delete)', path)
@@ -833,7 +845,7 @@ def frontend_page_data(request):
                 links.append({'label':'Set or update pickup plan','href':f'/claims/{claim.pk}/handoff'})
             if not claim.handoff_completed_at and claim.handoff_at and is_claimant and not claim.handoff_confirmed_by_claimant_at:
                 links.append({'label':'Confirm or request a change','href':f'/claims/{claim.pk}/handoff/respond'})
-            if not claim.handoff_completed_at and claim.handoff_at and claim.handoff_confirmed_by_claimant_at and (is_reporter or is_claimant or is_admin):
+            if not claim.handoff_completed_at and claim.handoff_at and claim.handoff_confirmed_by_claimant_at and (is_reporter or is_claimant):
                 already_confirmed = claim.handoff_returned_by_claimant_at if is_claimant else claim.handoff_returned_by_reporter_at
                 if not already_confirmed:
                     links.append({'label':'Confirm item handoff','href':f'/claims/{claim.pk}/handoff/confirm'})
