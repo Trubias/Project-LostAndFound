@@ -96,6 +96,7 @@ INSTALLED_APPS = [
     'matches',
     'reports',
     'auditlog',
+    'api_testing',
 ]
 
 MIDDLEWARE = [
@@ -173,6 +174,10 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+
+# The API test console may only create disposable SQLite test databases in
+# local debug environments. It is intentionally unavailable in production.
+API_TESTING_ENABLED = DEBUG and not IS_PRODUCTION and DATABASES['default']['ENGINE'] == 'django.db.backends.sqlite3'
 
 
 # ─── Password Validation ──────────────────────────────────────────────────────

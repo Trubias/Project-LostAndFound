@@ -12,16 +12,11 @@
         <i class="bi bi-box-seam-fill text-warning me-2"></i>Item Management
       </h1>
       <p class="text-muted small mb-0 mt-1">
-        Monitor, search, filter, edit, archive, or restore all reported items.
+        Monitor, search, filter, and action items. Track status:
+        <span class="badge bg-warning text-dark">Lost</span>
+        → <span class="badge bg-info text-white">Unclaimed</span>
+        → <span class="badge bg-success">Claimed</span>
       </p>
-    </div>
-    <div class="d-flex gap-2">
-      <a href="{% url 'items:report_lost' %}" class="btn btn-outline-warning btn-sm rounded-pill">
-        <i class="bi bi-plus-circle me-1"></i>New Lost Item
-      </a>
-      <a href="{% url 'items:report_found' %}" class="btn btn-outline-success btn-sm rounded-pill">
-        <i class="bi bi-plus-circle me-1"></i>New Found Item
-      </a>
     </div>
   </div>
 
@@ -58,7 +53,9 @@
           <label class="form-label small fw-bold text-muted mb-1">Status</label>
           <select name="status" class="form-select">
             <option value="" {% if not status_filter %}selected{% endif %}>All Statuses</option>
-            <option value="ACTIVE" {% if status_filter == 'ACTIVE' %}selected{% endif %}>Active</option>
+            <option value="ACTIVE" {% if status_filter == 'ACTIVE' %}selected{% endif %}>Lost</option>
+            <option value="UNCLAIMED" {% if status_filter == 'UNCLAIMED' %}selected{% endif %}>Unclaimed</option>
+            <option value="CLAIMED" {% if status_filter == 'CLAIMED' %}selected{% endif %}>Claimed</option>
             <option value="ARCHIVED" {% if status_filter == 'ARCHIVED' %}selected{% endif %}>Archived</option>
           </select>
         </div>
@@ -160,8 +157,12 @@
 
             <!-- Status -->
             <td>
-              {% if item.is_active %}
-              <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle px-2 py-1">Active</span>
+              {% if item.status == 'ACTIVE' %}
+              <span class="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning-subtle px-2 py-1">Lost</span>
+              {% elif item.status == 'UNCLAIMED' %}
+              <span class="badge bg-info bg-opacity-10 text-info-emphasis border border-info-subtle px-2 py-1">Unclaimed</span>
+              {% elif item.status == 'CLAIMED' %}
+              <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle px-2 py-1">Claimed</span>
               {% else %}
               <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle px-2 py-1">Archived</span>
               {% endif %}
@@ -175,23 +176,30 @@
 
             <!-- Actions -->
             <td class="text-end pe-4">
-              <div class="btn-group btn-group-sm">
-                <a href="{% url 'items:item_detail' pk=item.pk %}" class="btn btn-outline-secondary" title="View Detail">
+              <div class="d-flex gap-1 justify-content-end flex-wrap">
+                <a href="{% url 'items:item_detail' pk=item.pk %}" class="btn btn-sm btn-outline-secondary" title="View Detail">
                   <i class="bi bi-eye"></i>
                 </a>
-                <a href="{% url 'items:edit_item' pk=item.pk %}" class="btn btn-outline-primary" title="Edit Item">
-                  <i class="bi bi-pencil"></i>
+                {% if item.status == 'ACTIVE' %}
+                <a href="{% url 'items:mark_unclaimed' pk=item.pk %}" class="btn btn-sm btn-outline-info" title="Mark as Unclaimed (Found)">
+                  <i class="bi bi-eye"></i> Unclaim
                 </a>
-                {% if item.is_active %}
-                <a href="{% url 'items:archive_item' pk=item.pk %}" class="btn btn-outline-warning" title="Archive Item">
+                {% endif %}
+                {% if item.status == 'UNCLAIMED' %}
+                <a href="{% url 'items:mark_claimed' pk=item.pk %}" class="btn btn-sm btn-outline-success" title="Mark as Claimed">
+                  <i class="bi bi-check-circle"></i> Claim
+                </a>
+                {% endif %}
+                {% if item.status == 'ACTIVE' or item.status == 'UNCLAIMED' %}
+                <a href="{% url 'items:archive_item' pk=item.pk %}" class="btn btn-sm btn-outline-warning" title="Archive Item">
                   <i class="bi bi-archive"></i>
                 </a>
-                {% else %}
-                <a href="{% url 'items:restore_item' pk=item.pk %}" class="btn btn-outline-success" title="Restore Item">
+                {% elif item.status == 'ARCHIVED' %}
+                <a href="{% url 'items:restore_item' pk=item.pk %}" class="btn btn-sm btn-outline-success" title="Restore Item">
                   <i class="bi bi-arrow-counterclockwise"></i>
                 </a>
                 {% endif %}
-                <a href="{% url 'claims:item_claims' item_id=item.pk %}" class="btn btn-outline-danger" title="View Claims for this item">
+                <a href="{% url 'claims:item_claims' item_id=item.pk %}" class="btn btn-sm btn-outline-danger" title="View Claims for this item">
                   <i class="bi bi-hand-index-thumb"></i>
                 </a>
               </div>

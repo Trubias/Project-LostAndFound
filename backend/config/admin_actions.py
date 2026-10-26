@@ -2,15 +2,19 @@
 import re
 
 from django.contrib.auth.models import User
-from django.http import HttpResponseForbidden, HttpResponseNotAllowed
+from django.db import transaction
+from django.http import HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts.models import Profile
 from items.forms import CategoryForm, ReportLocationForm
-from items.models import Category, ReportLocation
+from items.models import Category, Item, ReportLocation
 from matches.models import ItemMatch
 from auditlog.services import record_event
+from notifications import services as notification_services
+from notifications.models import Notification
 from reports.models import AbuseReport
 
 
@@ -26,6 +30,46 @@ def admin_action(request, action):
         return redirect('/login/')
     if not _is_admin(request.user):
         return HttpResponseForbidden('Administrator access required.')
+
+    notification_read = re.fullmatch(r'notifications/(\d+)/read', action)
+    if notification_read:
+        notification = get_object_or_404(Notification, pk=notification_read.group(1))
+        notification.is_read = True
+        notification.save(update_fields=['is_read'])
+        return JsonResponse({'detail': 'Notification marked as read.'})
+
+    mark_found = re.fullmatch(r'items/(\d+)/mark-found', action)
+    if mark_found:
+        found_description = request.POST.get('found_description', '').strip()
+        with transaction.atomic():
+            item = get_object_or_404(
+                Item.objects.select_for_update(),
+                pk=mark_found.group(1),
+            )
+            if item.item_type != Item.TYPE_LOST or item.status != Item.STATUS_ACTIVE:
+                return JsonResponse(
+                    {'detail': 'Only active lost reports can be marked as found.'},
+                    status=409,
+                )
+            if not found_description:
+                return redirect(f'/items/{item.pk}/mark-found?error=1')
+            item.item_type = Item.TYPE_FOUND
+            item.status = Item.STATUS_ACTIVE
+            item.found_by = request.user
+            item.found_at = timezone.now()
+            item.found_description = found_description
+            item.save(update_fields=[
+                'item_type', 'status', 'found_by', 'found_at',
+                'found_description', 'updated_at',
+            ])
+            record_event(
+                request.user,
+                'item.found_reported',
+                item,
+                f'@{request.user.username} reported finding "{item.title}".',
+            )
+            notification_services.notify_item_found(item, request.user)
+        return redirect('/admin-dashboard/claims?updated=1')
 
     user_match = re.fullmatch(r'users/(\d+)/(toggle-status|change-role)', action)
     if user_match:

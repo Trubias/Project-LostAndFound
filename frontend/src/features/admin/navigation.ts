@@ -1,4 +1,4 @@
-import { Activity, Bell, Boxes, CalendarCheck, ChartNoAxesCombined, FileText, Flag, FolderKanban, LayoutDashboard, MapPinned, Search, Users } from 'lucide-react';
+import { Activity, Bell, Boxes, CalendarCheck, ChartNoAxesCombined, FileText, Flag, FlaskConical, FolderKanban, LayoutDashboard, MapPinned, Search, Users } from 'lucide-react';
 import type { WorkspaceLink } from '@/components/workspace-frame';
 
 export const adminNavigation: WorkspaceLink[] = [
@@ -13,5 +13,6 @@ export const adminNavigation: WorkspaceLink[] = [
   { href: '/admin-dashboard/locations', label: 'Locations & fields', icon: MapPinned },
   { href: '/admin-dashboard/matches', label: 'Matches', icon: Search },
   { href: '/admin-dashboard/notifications', label: 'Notifications', icon: Bell },
+  { href: '/admin-dashboard/api-tests', label: 'API tests', icon: FlaskConical },
   { href: '/reports', label: 'Reports', icon: ChartNoAxesCombined },
 ];

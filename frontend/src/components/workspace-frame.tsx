@@ -1,10 +1,11 @@
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, CircleHelp, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Bell, CircleHelp, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { AccountMenu } from '@/components/account-menu';
+import { cookies } from 'next/headers';
 
 export type WorkspaceLink = { href: string; label: string; icon: LucideIcon };
 
-export function WorkspaceFrame({ role, activePath, userName, avatar, nav, children }: {
+export async function WorkspaceFrame({ role, activePath, userName, avatar, nav, children }: {
   role: 'user' | 'admin';
   activePath: string;
   userName?: string;
@@ -14,6 +15,21 @@ export function WorkspaceFrame({ role, activePath, userName, avatar, nav, childr
 }) {
   const isAdmin = role === 'admin';
   const name = userName || (isAdmin ? 'Administrator' : 'Your account');
+  let hasUnreadNotifications = false;
+  const backend = process.env.DJANGO_URL ?? 'http://127.0.0.1:8000';
+  try {
+    const cookieHeader = (await cookies()).toString();
+    const response = await fetch(`${backend}/api/frontend-page/?path=${encodeURIComponent(isAdmin ? '/admin-dashboard/notifications' : '/notifications')}`, {
+      headers: cookieHeader ? { cookie: cookieHeader } : undefined,
+      cache: 'no-store',
+    });
+    if (response.ok) {
+      const notificationData = await response.json() as { unreadCount?: number };
+      hasUnreadNotifications = (notificationData.unreadCount ?? 0) > 0;
+    }
+  } catch {
+    hasUnreadNotifications = false;
+  }
   return <main className="min-h-screen bg-[#f5f7f3] text-[#203129] md:flex">
     <aside className="flex w-full shrink-0 flex-col border-b border-[#e6ebe4] bg-white px-4 py-4 md:min-h-screen md:w-[248px] md:border-b-0 md:border-r md:px-5 md:py-6">
       <Link href="/" className="mb-5 flex items-center gap-2.5 px-2 text-[17px] font-bold tracking-tight md:mb-10"><span className="grid h-8 w-8 place-items-center rounded-[10px] bg-[#274c3b] text-xs text-white">f.</span>findly<span className="-ml-2 text-[#8b9b8f]">.</span></Link>
@@ -28,7 +44,7 @@ export function WorkspaceFrame({ role, activePath, userName, avatar, nav, childr
       <div className="mt-3 flex items-center border-t border-[#edf0eb] pt-3 md:mt-5 md:pt-4"><Link href="/" className="flex items-center gap-2 text-[11px] font-medium text-[#87938a] hover:text-[#274c3b]"><ArrowLeft size={14}/> Back to Findly</Link></div>
     </aside>
     <div className="min-w-0 flex-1">
-      <header className="flex min-h-[70px] items-center justify-between border-b border-[#e7ebe5] bg-white/80 px-5 md:px-10"><div><p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#95a198]">{isAdmin ? 'Findly admin' : 'Your Findly account'}</p><p className="mt-1 text-xs font-semibold text-[#536158]">{isAdmin ? 'Community management' : 'Personal workspace'}</p></div><div className="flex items-center gap-3"><div className="hidden text-right sm:block"><p className="text-xs font-semibold text-[#34453b]">{name}</p><p className="mt-0.5 text-[10px] text-[#98a39b]">{isAdmin ? 'Administrator' : 'Community member'}</p></div><AccountMenu name={name} avatar={avatar} dashboard={isAdmin ? '/admin-dashboard' : '/dashboard'} roleLabel={isAdmin ? 'Administrator' : 'Community member'} size="small"/><ShieldCheck size={15} className={isAdmin ? 'text-[#67846c]' : 'hidden'}/></div></header>
+      <header className="flex min-h-[70px] items-center justify-between border-b border-[#e7ebe5] bg-white/80 px-5 md:px-10"><div><p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#95a198]">{isAdmin ? 'Findly admin' : 'Your Findly account'}</p><p className="mt-1 text-xs font-semibold text-[#536158]">{isAdmin ? 'Community management' : 'Personal workspace'}</p></div><div className="flex items-center gap-3"><Link href={isAdmin ? '/admin-dashboard/notifications' : '/notifications'} aria-label="Notifications" title="Notifications" className={`relative grid h-9 w-9 place-items-center rounded-full transition hover:bg-[#edf3eb] ${hasUnreadNotifications ? 'text-red-600 hover:text-red-700' : 'text-[#64756a] hover:text-[#274c3b]'}`}><Bell size={18} strokeWidth={1.8}/>{hasUnreadNotifications ? <span aria-label="Unread notifications" className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-600 ring-2 ring-white"/> : null}</Link><div className="hidden text-right sm:block"><p className="text-xs font-semibold text-[#34453b]">{name}</p><p className="mt-0.5 text-[10px] text-[#98a39b]">{isAdmin ? 'Administrator' : 'Community member'}</p></div><AccountMenu name={name} avatar={avatar} dashboard={isAdmin ? '/admin-dashboard' : '/dashboard'} roleLabel={isAdmin ? 'Administrator' : 'Community member'} size="small"/><ShieldCheck size={15} className={isAdmin ? 'text-[#67846c]' : 'hidden'}/></div></header>
       {children}
     </div>
   </main>;

@@ -17,5 +17,10 @@ urlpatterns = [
     path('<int:pk>/edit/', views.edit_item_view, name='edit_item'),
     path('<int:pk>/archive/', views.archive_item_view, name='archive_item'),
     path('<int:pk>/restore/', views.restore_item_view, name='restore_item'),
+    path('<int:pk>/mark-unclaimed/', views.mark_unclaimed_view, name='mark_unclaimed'),
+    path('<int:pk>/mark-claimed/', views.mark_claimed_view, name='mark_claimed'),
+    path('categories/', views.category_list_view, name='category_list'),
+    path('categories/add/', views.category_create_view, name='category_create'),
+    path('categories/<int:pk>/edit/', views.category_edit_view, name='category_edit'),
+    path('categories/<int:pk>/delete/', views.category_delete_view, name='category_delete'),
 ]
-

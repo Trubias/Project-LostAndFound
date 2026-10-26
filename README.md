@@ -68,6 +68,7 @@ The **Lost & Found Management System** simplifies the tracking, claiming, and re
 ### Administrator Management Suite
 - **Interactive Admin Dashboard:** Live metrics, recent activity feed, quick action shortcuts, and status summaries.
 - **Entity Management:** Full administrative CRUD for users, items, categories, claims, and matches.
+- **API Test Console:** Authorized administrators can discover API routes, probe seven HTTP methods, review responses, and inspect run history in local development.
 
 ### Reports, Analytics & Exports
 - **Executive Reporting Dashboard (`/reports/`):** Real-time aggregates for lost vs. found ratio, resolution rates, category distributions, and top incident locations.
@@ -216,6 +217,16 @@ python backend/manage.py test items
 python backend/manage.py test claims
 python backend/manage.py test matches
 python backend/manage.py test notifications
+```
+
+### API test console
+
+Start Django with `DJANGO_DEBUG=True`, apply migrations, and sign in as an administrator. Open **API tests** in the admin dashboard to inspect discovered routes, run one endpoint/method, or run the full API suite. The console runs Django's test runner against its disposable SQLite test database; API probe writes are rolled back and outbound socket connections are blocked. It is available only with debug enabled, outside production, and on SQLite, so it cannot run against the production PostgreSQL database. Test-console control routes are intentionally excluded from endpoint probes to prevent recursive runs.
+
+Run the same dedicated suite from a terminal with:
+
+```bash
+python backend/manage.py test api_testing.tests -v 2
 ```
 
 ---

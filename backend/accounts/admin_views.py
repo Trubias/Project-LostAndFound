@@ -44,6 +44,8 @@ def admin_dashboard_view(request):
     # Item statistics
     all_items = Item.objects.all()
     total_active_items = all_items.filter(status=Item.STATUS_ACTIVE).count()
+    total_unclaimed_items = all_items.filter(status=Item.STATUS_UNCLAIMED).count()
+    total_claimed_items = all_items.filter(status=Item.STATUS_CLAIMED).count()
     total_archived_items = all_items.filter(status=Item.STATUS_ARCHIVED).count()
     total_lost_items = all_items.filter(item_type=Item.TYPE_LOST).count()
     total_found_items = all_items.filter(item_type=Item.TYPE_FOUND).count()
@@ -151,6 +153,8 @@ def admin_dashboard_view(request):
         # Item stats
         'total_items': total_items,
         'total_active_items': total_active_items,
+        'total_unclaimed_items': total_unclaimed_items,
+        'total_claimed_items': total_claimed_items,
         'total_archived_items': total_archived_items,
         'total_lost_items': total_lost_items,
         'total_found_items': total_found_items,
@@ -267,7 +271,9 @@ def admin_user_detail_view(request, user_id):
     submitted_claims = Claim.objects.filter(claimant=target_user).select_related('item').order_by('-created_at')
 
     reports_count = reported_items.count()
-    lost_reports_count = reported_items.filter(item_type=Item.TYPE_LOST).count()
+    lost_reports_count = reported_items.filter(status=Item.STATUS_ACTIVE).count()
+    unclaimed_reports_count = reported_items.filter(status=Item.STATUS_UNCLAIMED).count()
+    claimed_reports_count = reported_items.filter(status=Item.STATUS_CLAIMED).count()
     found_reports_count = reported_items.filter(item_type=Item.TYPE_FOUND).count()
 
     claims_count = submitted_claims.count()
@@ -279,6 +285,8 @@ def admin_user_detail_view(request, user_id):
         'target_user': target_user,
         'reports_count': reports_count,
         'lost_reports_count': lost_reports_count,
+        'unclaimed_reports_count': unclaimed_reports_count,
+        'claimed_reports_count': claimed_reports_count,
         'found_reports_count': found_reports_count,
         'claims_count': claims_count,
         'pending_claims_count': pending_claims_count,
@@ -389,9 +397,10 @@ def admin_items_view(request):
     else:
         item_type = ''
 
-    # Filter: Status (ACTIVE, ARCHIVED)
+    # Filter: Status (ACTIVE, UNCLAIMED, CLAIMED, ARCHIVED)
     status_filter = request.GET.get('status', '').strip().upper()
-    if status_filter in [Item.STATUS_ACTIVE, Item.STATUS_ARCHIVED]:
+    valid_statuses = [Item.STATUS_ACTIVE, Item.STATUS_UNCLAIMED, Item.STATUS_CLAIMED, Item.STATUS_ARCHIVED]
+    if status_filter in valid_statuses:
         items_qs = items_qs.filter(status=status_filter)
     else:
         status_filter = ''

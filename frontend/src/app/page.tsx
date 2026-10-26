@@ -36,7 +36,7 @@ const steps = [
 export default function Home() {
   return (
     <main className="min-h-screen overflow-hidden bg-[#f8f9f6]">
-      <SiteHeader />
+      <SiteHeader showNavigation />
 
       <section className="relative mx-auto grid max-w-[1440px] items-center gap-8 px-6 pb-14 pt-11 md:grid-cols-[1.04fr_.96fr] md:px-12 md:pb-20 md:pt-14">
         <div className="relative z-10 max-w-[610px]">
