@@ -1,4 +1,5 @@
 from django import forms
+from config.validators import validate_image_upload
 from .models import Item, Category, ReportLocation
 from .locations import BUILDING_CHOICES, LOCATION_CHOICES, ROOM_CHOICES
 
@@ -9,7 +10,7 @@ class ItemForm(forms.ModelForm):
     class Meta:
         model = Item
         fields = [
-            'title', 'description', 'category', 'location', 'building', 'room',
+            'title', 'description', 'category', 'location', 'contact_phone', 'building', 'room',
             'workstation', 'date_occurred', 'approximate_time', 'image',
         ]
         widgets = {
@@ -33,6 +34,10 @@ class ItemForm(forms.ModelForm):
                 'placeholder': 'e.g. Library 2nd Floor, Room 301, Cafeteria',
                 'id': 'id_location',
             }),
+            'contact_phone': forms.TelInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g. 0917 123 4567',
+            }),
             'building': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Main Building'}),
             'room': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. ComLab 2'}),
             'workstation': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. PC 14 or near the printer'}),
@@ -53,6 +58,7 @@ class ItemForm(forms.ModelForm):
             'description': 'Description',
             'category': 'Category',
             'location': 'Location',
+            'contact_phone': 'Cell phone number (optional)',
             'building': 'Building (optional)',
             'room': 'Room / Computer Lab (optional)',
             'workstation': 'Workstation / Landmark (optional)',
@@ -62,7 +68,10 @@ class ItemForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        include_contact_phone = kwargs.pop('include_contact_phone', False)
         super().__init__(*args, **kwargs)
+        if not include_contact_phone:
+            self.fields.pop('contact_phone')
         def choices_with_existing(kind, fallback, value):
             configured = list(ReportLocation.objects.filter(kind=kind, active=True).order_by('name').values_list('name', 'name'))
             choices = configured or fallback
@@ -91,6 +100,8 @@ class ItemForm(forms.ModelForm):
         self.fields['title'].required = True
         self.fields['description'].required = True
         self.fields['location'].required = True
+        if 'contact_phone' in self.fields:
+            self.fields['contact_phone'].required = False
 
     def clean_title(self):
         title = self.cleaned_data.get('title', '').strip()
@@ -109,6 +120,32 @@ class ItemForm(forms.ModelForm):
         if len(location) < 3:
             raise forms.ValidationError('Location must be at least 3 characters.')
         return location
+
+
+class FoundReportForm(forms.Form):
+    found_description = forms.CharField(
+        label='Describe where and how you found this item',
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 4,
+            'placeholder': 'Describe where and how you found this item.',
+        }),
+    )
+    found_image = forms.ImageField(
+        label='Photo (optional)',
+        required=False,
+        validators=[validate_image_upload],
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': 'image/*',
+        }),
+    )
+
+    def clean_found_description(self):
+        description = self.cleaned_data['found_description'].strip()
+        if not description:
+            raise forms.ValidationError('Describe where and how you found this item.')
+        return description
 
 
 class CategoryForm(forms.ModelForm):
@@ -161,4 +198,3 @@ class ReportLocationForm(forms.ModelForm):
         if duplicate.exists():
             raise forms.ValidationError('A location with this name already exists.')
         return name
-

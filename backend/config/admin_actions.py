@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from accounts.models import Profile
-from items.forms import CategoryForm, ReportLocationForm
+from items.forms import FoundReportForm, CategoryForm, ReportLocationForm
 from items.models import Category, Item, ReportLocation
 from matches.models import ItemMatch
 from auditlog.services import record_event
@@ -40,7 +40,7 @@ def admin_action(request, action):
 
     mark_found = re.fullmatch(r'items/(\d+)/mark-found', action)
     if mark_found:
-        found_description = request.POST.get('found_description', '').strip()
+        form = FoundReportForm(request.POST, request.FILES)
         with transaction.atomic():
             item = get_object_or_404(
                 Item.objects.select_for_update(),
@@ -51,16 +51,17 @@ def admin_action(request, action):
                     {'detail': 'Only active lost reports can be marked as found.'},
                     status=409,
                 )
-            if not found_description:
-                return redirect(f'/items/{item.pk}/mark-found?error=1')
+            if not form.is_valid():
+                return JsonResponse({'detail': 'Please provide a valid finding description and photo.'}, status=400)
             item.item_type = Item.TYPE_FOUND
             item.status = Item.STATUS_ACTIVE
             item.found_by = request.user
             item.found_at = timezone.now()
-            item.found_description = found_description
+            item.found_description = form.cleaned_data['found_description']
+            item.found_image = form.cleaned_data['found_image']
             item.save(update_fields=[
                 'item_type', 'status', 'found_by', 'found_at',
-                'found_description', 'updated_at',
+                'found_description', 'found_image', 'updated_at',
             ])
             record_event(
                 request.user,

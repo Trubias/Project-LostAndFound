@@ -107,8 +107,8 @@
               </span>
             </td>
             <td>
-              <div class="fw-bold small">{{ notif.title }}</div>
-              <div class="text-muted" style="font-size: 0.75rem;">{{ notif.message|truncatewords:15 }}</div>
+              <div class="fw-bold small">{{ notif.admin_display_title }}</div>
+              <div class="text-muted" style="font-size: 0.75rem;">{{ notif.admin_display_message|truncatewords:15 }}</div>
             </td>
             <td>
               {% if notif.related_item %}

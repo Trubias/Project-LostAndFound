@@ -720,7 +720,7 @@ def admin_match_dismiss_view(request, match_id):
 def admin_notifications_view(request):
     """Admin view to inspect notification records across the system."""
     notifs_qs = Notification.objects.select_related(
-        'recipient', 'related_item', 'related_claim'
+        'recipient', 'related_item', 'related_item__found_by', 'related_claim'
     )
 
     # Filter by notification_type
@@ -757,6 +757,22 @@ def admin_notifications_view(request):
 
     paginator = Paginator(notifs_qs, 20)
     page_obj = paginator.get_page(request.GET.get('page'))
+
+    for notification in page_obj.object_list:
+        item = notification.related_item
+        is_reported_found = bool(
+            item
+            and item.found_by_id
+            and item.item_type == Item.TYPE_FOUND
+        )
+        notification.admin_display_title = (
+            'This item has been Found' if is_reported_found else notification.title
+        )
+        notification.admin_display_message = (
+            f'"{item.title}" was reported found by '
+            f'{item.found_by.get_full_name() or item.found_by.username}.'
+            if is_reported_found else notification.message
+        )
 
     return render(request, 'admin_dashboard/notifications.html', {
         'notifications': page_obj,

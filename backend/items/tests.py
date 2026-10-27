@@ -189,6 +189,7 @@ class ItemsSprint2Tests(TestCase):
                 'category': self.category.id,
                 'location': LOCATION_CHOICES[0][0],
                 'date_occurred': str(date.today()),
+                'contact_phone': '0917 123 4567',
             })
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response['Location'], '/dashboard')
@@ -196,6 +197,7 @@ class ItemsSprint2Tests(TestCase):
         self.assertEqual(item.reporter, self.user1)
         self.assertEqual(item.item_type, Item.TYPE_LOST)
         self.assertEqual(item.status, Item.STATUS_ACTIVE)
+        self.assertEqual(item.contact_phone, '0917 123 4567')
 
     def test_report_found_item(self):
         self.client.login(username='user2', password='password123')
@@ -303,6 +305,34 @@ class ItemsSprint2Tests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.item_lost.refresh_from_db()
         self.assertEqual(self.item_lost.status, Item.STATUS_ACTIVE)
+
+    def test_owner_found_report_can_be_claimed_without_edit_action(self):
+        self.item_lost.item_type = Item.TYPE_FOUND
+        self.item_lost.found_by = self.user2
+        self.item_lost.found_description = 'Found at the library.'
+        self.item_lost.save()
+        self.client.login(username='user1', password='password123')
+
+        reports = self.client.get(reverse('items:my_items'))
+        self.assertIn(self.item_lost, reports.context['found_items'])
+
+        detail = self.client.get(reverse('items:item_detail', kwargs={'pk': self.item_lost.pk}))
+        self.assertTrue(detail.context['can_mark_claimed'])
+        self.assertFalse(detail.context['can_edit'])
+        self.assertContains(detail, 'Back')
+        self.assertContains(detail, 'Claim')
+        self.assertNotContains(detail, 'Edit</a>')
+
+        response = self.client.post(reverse('items:mark_claimed', kwargs={'pk': self.item_lost.pk}))
+        self.assertEqual(response.status_code, 302)
+        self.item_lost.refresh_from_db()
+        self.assertEqual(self.item_lost.status, Item.STATUS_CLAIMED)
+
+        claimed_detail = self.client.get(reverse('items:item_detail', kwargs={'pk': self.item_lost.pk}))
+        self.assertFalse(claimed_detail.context['can_edit'])
+        self.assertFalse(claimed_detail.context['can_mark_claimed'])
+        self.assertContains(claimed_detail, 'Back')
+        self.assertNotContains(claimed_detail, 'Edit</a>')
 
     # ─────────────────────────────────────────────
     # Category Management Tests (Admin only)

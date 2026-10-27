@@ -70,6 +70,7 @@ class Item(models.Model):
         related_name='items'
     )
     location = models.CharField(max_length=200)
+    contact_phone = models.CharField(max_length=32, blank=True)
     building = models.CharField(max_length=120, blank=True)
     room = models.CharField(max_length=80, blank=True)
     workstation = models.CharField(max_length=120, blank=True)
@@ -94,6 +95,10 @@ class Item(models.Model):
     )
     found_at = models.DateTimeField(null=True, blank=True)
     found_description = models.TextField(blank=True)
+    found_image = models.ImageField(
+        upload_to='item_images/found_evidence/', blank=True, null=True,
+        validators=[validate_image_upload],
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

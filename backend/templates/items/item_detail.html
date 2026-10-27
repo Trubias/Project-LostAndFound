@@ -9,7 +9,9 @@
   <!-- Breadcrumb -->
   <nav aria-label="breadcrumb" class="mb-3 animate-in">
     <ol class="breadcrumb">
-      {% if item.item_type == 'LOST' %}
+      {% if item.item_type == 'FOUND' and item.found_by_id and user == item.reporter %}
+      <li class="breadcrumb-item"><a href="{% url 'items:my_items' %}">My Reports</a></li>
+      {% elif item.item_type == 'LOST' %}
       <li class="breadcrumb-item"><a href="{% url 'items:lost_items' %}">Lost Items</a></li>
       {% else %}
       <li class="breadcrumb-item"><a href="{% url 'items:found_items' %}">Found Items</a></li>
@@ -22,7 +24,10 @@
     <!-- Image Column -->
     <div class="col-md-5 animate-in">
       <div class="card overflow-hidden h-100">
-        {% if item.image %}
+        {% if item.item_type == 'FOUND' and item.found_image %}
+        <img src="{{ item.found_image.url }}" alt="Photo showing where the item was found: {{ item.title }}" class="img-fluid"
+             style="width:100%; max-height:400px; object-fit:cover;">
+        {% elif item.image %}
         <img src="{{ item.image.url }}" alt="{{ item.title }}" class="img-fluid"
              style="width:100%; max-height:400px; object-fit:cover;">
         {% else %}
@@ -67,6 +72,13 @@
           <h2 class="h6 text-uppercase text-muted fw-bold mb-2">Description</h2>
           <p class="mb-0">{{ item.description }}</p>
         </div>
+        {% if item.item_type == 'FOUND' and item.found_by_id %}
+        <div class="mb-4">
+          <h2 class="h6 text-uppercase text-muted fw-bold mb-2">Finding report</h2>
+          <p class="mb-1">{{ item.found_description }}</p>
+          <p class="small text-muted mb-0">Reported found by {{ item.found_by.get_full_name|default:item.found_by.username }}{% if item.found_at %} on {{ item.found_at|date:"F d, Y" }}{% endif %}.</p>
+        </div>
+        {% endif %}
 
         <div class="row g-3 mb-4">
           <div class="col-sm-6">
@@ -126,7 +138,11 @@
 
         <!-- Action Buttons -->
         <div class="d-flex flex-wrap gap-2 mt-auto pt-3 border-top">
-          {% if item.item_type == 'LOST' %}
+          {% if item.item_type == 'FOUND' and item.found_by_id and user == item.reporter %}
+          <a href="{% url 'items:my_items' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Back
+          </a>
+          {% elif item.item_type == 'LOST' %}
           <a href="{% url 'items:lost_items' %}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-arrow-left me-1"></i>Back to Lost Items
           </a>
@@ -152,7 +168,7 @@
           <!-- Mark as Claimed: owner has retrieved the item -->
           {% if can_mark_claimed %}
           <a href="{% url 'items:mark_claimed' item.pk %}" class="btn btn-success btn-sm">
-            <i class="bi bi-check-circle me-1"></i>Mark as Claimed
+            <i class="bi bi-check-circle me-1"></i>{% if item.item_type == 'FOUND' and item.found_by_id %}Claim{% else %}Mark as Claimed{% endif %}
           </a>
           {% endif %}
 
@@ -199,4 +215,3 @@
 
 </div>
 {% endblock %}
-

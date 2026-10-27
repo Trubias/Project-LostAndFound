@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}My Lost Reports{% endblock %}
+{% block title %}My Reports{% endblock %}
 {% block nav_my_items %}active{% endblock %}
 
 {% block content %}
@@ -8,10 +8,10 @@
   <!-- Header -->
   <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3 animate-in">
     <div>
-      <h1 class="h3 fw-bold mb-0"><i class="bi bi-clipboard2-check-fill text-primary me-2"></i>My Lost Reports</h1>
+      <h1 class="h3 fw-bold mb-0"><i class="bi bi-clipboard2-check-fill text-primary me-2"></i>My Reports</h1>
       <p class="text-muted small mb-0 mt-1">
-        Track the lifecycle of your lost items: <span class="badge bg-warning text-dark">Lost</span>
-        → <span class="badge bg-info text-white">Unclaimed</span>
+        Track your reports: <span class="badge bg-warning text-dark">Lost</span>
+        → <span class="badge bg-success">Found</span>
         → <span class="badge bg-success">Claimed</span>
       </p>
     </div>
@@ -31,6 +31,15 @@
           <div class="stat-number mt-1" style="font-size:1.8rem;">{{ lost_items.count }}</div>
         </div>
         <i class="bi bi-question-circle stat-icon" style="font-size:1.8rem;"></i>
+      </div>
+    </div>
+    <div class="stat-card bg-gradient-blue flex-grow-1" style="min-width:130px;padding:1rem;">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="stat-label">Found</div>
+          <div class="stat-number mt-1" style="font-size:1.8rem;">{{ found_items.count }}</div>
+        </div>
+        <i class="bi bi-check-circle stat-icon" style="font-size:1.8rem;"></i>
       </div>
     </div>
     <div class="stat-card bg-gradient-blue flex-grow-1" style="min-width:130px;padding:1rem;">
@@ -108,6 +117,53 @@
     <i class="bi bi-question-circle text-muted fs-1 mb-2"></i>
     <p class="text-muted mb-3">No items currently in "Lost" status.</p>
     <a href="{% url 'items:report_lost' %}" class="btn btn-warning btn-sm">Report a Lost Item</a>
+  </div>
+  {% endif %}
+
+  <!-- Found reports awaiting their owner -->
+  <h2 class="h6 fw-bold text-uppercase text-muted mb-3 animate-in">
+    <i class="bi bi-check-circle-fill text-success me-1"></i>Found — Ready to Claim ({{ found_items.count }})
+  </h2>
+  {% if found_items %}
+  <div class="row g-3 mb-5">
+    {% for item in found_items %}
+    <div class="col-md-6 col-xl-4 animate-in delay-{{ forloop.counter }}">
+      <div class="card h-100 border-success" style="border-width:2px;">
+        {% if item.found_image %}
+        <img src="{{ item.found_image.url }}" alt="Evidence for {{ item.title }}"
+             class="card-img-top" style="height:160px; object-fit:cover; border-radius:14px 14px 0 0;">
+        {% elif item.image %}
+        <img src="{{ item.image.url }}" alt="{{ item.title }}"
+             class="card-img-top" style="height:160px; object-fit:cover; border-radius:14px 14px 0 0;">
+        {% else %}
+        <div class="d-flex align-items-center justify-content-center bg-light"
+             style="height:100px; border-radius:14px 14px 0 0;">
+          <i class="bi bi-image text-muted fs-2"></i>
+        </div>
+        {% endif %}
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex gap-2 mb-2">
+            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>FOUND</span>
+          </div>
+          <h3 class="h6 fw-bold mb-1 text-truncate">{{ item.title }}</h3>
+          <div class="text-muted small mb-1"><i class="bi bi-geo-alt me-1"></i>{{ item.location }}</div>
+          <div class="text-muted small mb-3"><i class="bi bi-calendar3 me-1"></i>{{ item.date_occurred|date:"M d, Y" }}</div>
+          <div class="d-flex gap-2 mt-auto flex-wrap">
+            <a href="{% url 'items:item_detail' item.pk %}" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-eye me-1"></i>View
+            </a>
+            <a href="{% url 'items:mark_claimed' item.pk %}" class="btn btn-sm btn-success">
+              <i class="bi bi-check-circle me-1"></i>Claim
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card placeholder-card p-3 text-center mb-5 animate-in">
+    <p class="text-muted small mb-0">No found reports are waiting for you to claim.</p>
   </div>
   {% endif %}
 

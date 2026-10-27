@@ -31,6 +31,16 @@
           <div class="p-3 bg-light rounded-3 mb-4">
             <p class="mb-0 fs-6 text-dark" style="white-space: pre-wrap; line-height: 1.6;">{{ notification.message }}</p>
           </div>
+          {% if notification.related_item and notification.related_item.item_type == 'FOUND' and notification.related_item.found_by_id %}
+          <section class="border rounded-3 p-3 mb-4">
+            <h2 class="h6 fw-bold">Finding report</h2>
+            <p class="mb-2">{{ notification.related_item.found_description }}</p>
+            <p class="small text-muted mb-2">Reported by {{ notification.related_item.found_by.get_full_name|default:notification.related_item.found_by.username }}{% if notification.related_item.found_at %} on {{ notification.related_item.found_at|date:"F d, Y, g:i a" }}{% endif %}.</p>
+            {% if notification.related_item.found_image %}
+            <img src="{{ notification.related_item.found_image.url }}" alt="Photo showing where the item was found" class="img-fluid rounded-3">
+            {% endif %}
+          </section>
+          {% endif %}
 
           <!-- Related Links -->
           {% if notification.related_item or notification.related_claim %}

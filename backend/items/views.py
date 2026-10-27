@@ -12,7 +12,7 @@ from django.utils import timezone
 
 from accounts.models import Profile
 from .models import Item, Category, ReportLocation
-from .forms import ItemForm, CategoryForm, ReportLocationForm
+from .forms import FoundReportForm, ItemForm, CategoryForm, ReportLocationForm
 from notifications import services as notif_svc
 from matches import engine as match_engine
 from auditlog.services import record_event
@@ -420,7 +420,7 @@ def item_detail_view(request, pk):
 @login_required(login_url='/login/')
 def report_lost_view(request):
     if request.method == 'POST':
-        form = ItemForm(request.POST, request.FILES)
+        form = ItemForm(request.POST, request.FILES, include_contact_phone=True)
         if form.is_valid():
             item = form.save(commit=False)
             item.item_type = Item.TYPE_LOST
@@ -432,7 +432,7 @@ def report_lost_view(request):
             messages.success(request, f'Lost item "{item.title}" has been reported successfully.')
             return redirect('items:my_items')
     else:
-        form = ItemForm()
+        form = ItemForm(include_contact_phone=True)
 
     return render(request, 'items/item_form.html', {
         'form': form,
@@ -523,7 +523,12 @@ def edit_item_view(request, pk):
         return render(request, '403.html', status=403)
 
     if request.method == 'POST':
-        form = ItemForm(request.POST, request.FILES, instance=item)
+        form = ItemForm(
+            request.POST,
+            request.FILES,
+            instance=item,
+            include_contact_phone=item.item_type == Item.TYPE_LOST,
+        )
         if form.is_valid():
             updated = form.save(commit=False)
             # Prevent changing reporter or timestamps
@@ -532,7 +537,7 @@ def edit_item_view(request, pk):
             messages.success(request, f'Item "{item.title}" has been updated.')
             return redirect('items:item_detail', pk=item.pk)
     else:
-        form = ItemForm(instance=item)
+        form = ItemForm(instance=item, include_contact_phone=item.item_type == Item.TYPE_LOST)
 
     return render(request, 'items/item_form.html', {
         'form': form,
@@ -625,10 +630,9 @@ def mark_unclaimed_view(request, pk):
         return redirect('items:item_detail', pk=pk)
 
     if request.method == 'POST':
-        found_description = request.POST.get('found_description', '').strip()
-        if not found_description:
-            messages.error(request, 'Describe where and how you found this item.')
-            return redirect(f'/items/{item.pk}/mark-unclaimed?error=1')
+        form = FoundReportForm(request.POST, request.FILES)
+        if not form.is_valid():
+            return render(request, 'items/confirm_mark_unclaimed.html', {'item': item, 'form': form})
 
         with transaction.atomic():
             item = Item.objects.select_for_update().get(pk=pk)
@@ -639,10 +643,11 @@ def mark_unclaimed_view(request, pk):
             item.status = Item.STATUS_ACTIVE
             item.found_by = request.user
             item.found_at = timezone.now()
-            item.found_description = found_description
+            item.found_description = form.cleaned_data['found_description']
+            item.found_image = form.cleaned_data['found_image']
             item.save(update_fields=[
                 'item_type', 'status', 'found_by', 'found_at',
-                'found_description', 'updated_at',
+                'found_description', 'found_image', 'updated_at',
             ])
             record_event(
                 request.user,
@@ -654,7 +659,7 @@ def mark_unclaimed_view(request, pk):
         messages.success(request, f'You reported "{item.title}" as found. The owner has been notified.')
         return redirect('/claims/my')
 
-    return render(request, 'items/confirm_mark_unclaimed.html', {'item': item})
+    return render(request, 'items/confirm_mark_unclaimed.html', {'item': item, 'form': FoundReportForm()})
 
 
 # ─────────────────────────────────────────────
@@ -664,23 +669,43 @@ def mark_unclaimed_view(request, pk):
 @login_required(login_url='/login/')
 def mark_claimed_view(request, pk):
     """
-    Mark an UNCLAIMED item as CLAIMED — owner has retrieved their item.
-    Only admins or the item reporter can trigger this.
+    Mark an UNCLAIMED item or the owner's found report as CLAIMED.
     """
     item = get_object_or_404(Item, pk=pk)
+    is_owner = item.reporter_id == request.user.pk
+    is_finder_report = item.item_type == Item.TYPE_FOUND and bool(item.found_by_id)
 
-    if not (item.reporter == request.user or is_admin_user(request.user)):
+    if not (is_owner or is_admin_user(request.user)):
         messages.error(request, 'You do not have permission to mark this item as Claimed.')
         return render(request, '403.html', status=403)
+    if is_finder_report and not is_owner:
+        messages.error(request, 'Only the owner can claim this found item.')
+        return render(request, '403.html', status=403)
 
-    if item.status != Item.STATUS_UNCLAIMED:
-        messages.error(request, 'This item must be in "Unclaimed" status to be marked as Claimed.')
+    if not (is_finder_report and item.status == Item.STATUS_ACTIVE) and item.status != Item.STATUS_UNCLAIMED:
+        messages.error(request, 'This item is not available to be marked as Claimed.')
         return redirect('items:item_detail', pk=pk)
 
     if request.method == 'POST':
-        item.status = Item.STATUS_CLAIMED
-        item.save()
-        messages.success(request, f'Item "{item.title}" has been marked as Claimed — owner has retrieved it!')
+        with transaction.atomic():
+            item = Item.objects.select_for_update().get(pk=pk)
+            is_finder_report = item.item_type == Item.TYPE_FOUND and bool(item.found_by_id)
+            can_claim_found_report = is_finder_report and item.reporter_id == request.user.pk and item.status == Item.STATUS_ACTIVE
+            can_claim_unclaimed = item.status == Item.STATUS_UNCLAIMED and (
+                item.reporter_id == request.user.pk or is_admin_user(request.user)
+            )
+            if not (can_claim_found_report or can_claim_unclaimed):
+                messages.error(request, 'This item is no longer available to be marked as Claimed.')
+                return redirect('items:item_detail', pk=pk)
+            item.status = Item.STATUS_CLAIMED
+            item.save(update_fields=['status', 'updated_at'])
+            record_event(
+                request.user,
+                'item.claimed',
+                item,
+                f'@{request.user.username} marked "{item.title}" as claimed.',
+            )
+        messages.success(request, f'Item "{item.title}" has been marked as Claimed.')
         try:
             notif_svc.notify_item_status_changed(item, triggering_user=request.user, new_status='CLAIMED')
         except Exception:
@@ -1069,13 +1094,16 @@ def item_detail_view(request, pk):
     if request.user.is_authenticated:
         is_owner = item.reporter == request.user
         is_admin = is_admin_user(request.user)
-        can_edit = is_owner or is_admin
-        if item.is_active() or item.is_unclaimed():
+        is_finder_report = item.item_type == Item.TYPE_FOUND and bool(item.found_by_id)
+        can_edit = (is_owner or is_admin) and not is_finder_report
+        if (item.is_active() or item.is_unclaimed()) and not is_finder_report:
             can_archive = is_owner or is_admin
         if item.is_archived():
-            can_restore = is_owner or is_admin
+            can_restore = (is_owner or is_admin) and not is_finder_report
 
-        if item.item_type == Item.TYPE_LOST:
+        if is_finder_report:
+            can_mark_claimed = is_owner and item.is_active()
+        elif item.item_type == Item.TYPE_LOST:
             can_mark_unclaimed = item.is_active()
             can_mark_claimed = (is_owner or is_admin) and item.is_unclaimed()
 
@@ -1118,7 +1146,7 @@ def item_detail_view(request, pk):
 @login_required(login_url='/login/')
 def report_lost_view(request):
     if request.method == 'POST':
-        form = ItemForm(request.POST, request.FILES)
+        form = ItemForm(request.POST, request.FILES, include_contact_phone=True)
         if form.is_valid():
             item = form.save(commit=False)
             item.item_type = Item.TYPE_LOST
@@ -1131,7 +1159,7 @@ def report_lost_view(request):
             messages.success(request, f'Lost item "{item.title}" has been reported successfully.')
             return redirect('/dashboard')
     else:
-        form = ItemForm()
+        form = ItemForm(include_contact_phone=True)
 
     return render(request, 'items/item_form.html', {
         'form': form,
@@ -1183,17 +1211,22 @@ def report_found_view(request):
 
 @login_required(login_url='/login/')
 def my_items_view(request):
-    user_lost_items = Item.objects.filter(
-        reporter=request.user,
-        item_type=Item.TYPE_LOST,
+    user_lost_items = Item.objects.filter(reporter=request.user).filter(
+        Q(item_type=Item.TYPE_LOST) | Q(found_by__isnull=False)
     ).select_related('category').order_by('-created_at')
 
-    lost_items = user_lost_items.filter(status=Item.STATUS_ACTIVE)
-    unclaimed_items = user_lost_items.filter(status=Item.STATUS_UNCLAIMED)
+    lost_items = user_lost_items.filter(item_type=Item.TYPE_LOST, status=Item.STATUS_ACTIVE)
+    found_items = user_lost_items.filter(
+        item_type=Item.TYPE_FOUND,
+        found_by__isnull=False,
+        status=Item.STATUS_ACTIVE,
+    )
+    unclaimed_items = user_lost_items.filter(item_type=Item.TYPE_LOST, status=Item.STATUS_UNCLAIMED)
     claimed_items = user_lost_items.filter(status=Item.STATUS_CLAIMED)
     archived_items = user_lost_items.filter(status=Item.STATUS_ARCHIVED)
     return render(request, 'items/my_items.html', {
         'lost_items': lost_items,
+        'found_items': found_items,
         'unclaimed_items': unclaimed_items,
         'claimed_items': claimed_items,
         'archived_items': archived_items,
@@ -1213,9 +1246,17 @@ def edit_item_view(request, pk):
     if not (item.reporter == request.user or is_admin_user(request.user)):
         messages.error(request, 'You do not have permission to edit this item.')
         return render(request, '403.html', status=403)
+    if item.item_type == Item.TYPE_FOUND and item.found_by_id and not is_admin_user(request.user):
+        messages.error(request, 'Found reports cannot be edited by the item owner.')
+        return redirect('items:item_detail', pk=pk)
 
     if request.method == 'POST':
-        form = ItemForm(request.POST, request.FILES, instance=item)
+        form = ItemForm(
+            request.POST,
+            request.FILES,
+            instance=item,
+            include_contact_phone=item.item_type == Item.TYPE_LOST,
+        )
         if form.is_valid():
             updated = form.save(commit=False)
             # Prevent changing reporter or timestamps
@@ -1226,7 +1267,7 @@ def edit_item_view(request, pk):
             messages.success(request, f'Item "{item.title}" has been updated.')
             return redirect('items:item_detail', pk=item.pk)
     else:
-        form = ItemForm(instance=item)
+        form = ItemForm(instance=item, include_contact_phone=item.item_type == Item.TYPE_LOST)
 
     return render(request, 'items/item_form.html', {
         'form': form,
