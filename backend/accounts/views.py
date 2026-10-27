@@ -128,12 +128,18 @@ def dashboard_view(request):
     if is_admin_user(request.user):
         return redirect('/admin-dashboard')
 
-    # Item stats for this user
+    # Item stats for this user's LOST reports (new status system)
     Item = _get_item_model()
-    my_items = Item.objects.filter(reporter=request.user)
-    active_items = Item.objects.filter(status=Item.STATUS_ACTIVE).select_related('category', 'reporter')
-    latest_lost_items = active_items.filter(item_type=Item.TYPE_LOST)[:4]
-    latest_found_items = active_items.filter(item_type=Item.TYPE_FOUND)[:4]
+    my_lost_reports = Item.objects.filter(reporter=request.user, item_type=Item.TYPE_LOST)
+
+    # Recent lost items from OTHER users (not own), not archived
+    latest_lost_items = Item.objects.exclude(
+        status=Item.STATUS_ARCHIVED
+    ).filter(
+        item_type=Item.TYPE_LOST
+    ).exclude(
+        reporter=request.user
+    ).select_related('category', 'reporter').order_by('-created_at')[:6]
 
     # Claim stats for this user (Sprint 4)
     from claims.models import Claim
@@ -150,12 +156,12 @@ def dashboard_view(request):
 
     context = {
         'user': request.user,
-        'my_active_count': my_items.filter(status=Item.STATUS_ACTIVE).count(),
-        'my_archived_count': my_items.filter(status=Item.STATUS_ARCHIVED).count(),
-        'my_lost_count': my_items.filter(item_type=Item.TYPE_LOST).count(),
-        'my_found_count': my_items.filter(item_type=Item.TYPE_FOUND).count(),
+        # My report status breakdown (Lost lifecycle)
+        'my_lost_count': my_lost_reports.filter(status=Item.STATUS_ACTIVE).count(),
+        'my_unclaimed_count': my_lost_reports.filter(status=Item.STATUS_UNCLAIMED).count(),
+        'my_claimed_count': my_lost_reports.filter(status=Item.STATUS_CLAIMED).count(),
+        'my_archived_count': my_lost_reports.filter(status=Item.STATUS_ARCHIVED).count(),
         'latest_lost_items': latest_lost_items,
-        'latest_found_items': latest_found_items,
         # Claim counts
         'my_claims_pending': my_claims.filter(status=Claim.STATUS_PENDING).count(),
         'my_claims_approved': my_claims.filter(status=Claim.STATUS_APPROVED).count(),
@@ -166,6 +172,7 @@ def dashboard_view(request):
         'possible_matches_count': possible_matches_count,
     }
     return render(request, 'dashboard/user_dashboard.html', context)
+
 
 
 

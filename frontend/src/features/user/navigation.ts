@@ -1,8 +1,9 @@
-import { Bell, Boxes, FileText, FolderKanban, KeyRound, LayoutDashboard, UserRound } from 'lucide-react';
+import { Bell, Boxes, FileText, FolderKanban, KeyRound, LayoutDashboard, Search, UserRound } from 'lucide-react';
 import type { WorkspaceLink } from '@/components/workspace-frame';
 
 export const userNavigation: WorkspaceLink[] = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
+  { href: '/lost-items', label: 'Lost items', icon: Search },
   { href: '/items/my-reports', label: 'My reports', icon: FolderKanban },
   { href: '/claims/my', label: 'My claims', icon: FileText },
   { href: '/matches', label: 'Possible matches', icon: Boxes },
