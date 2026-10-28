@@ -1,12 +1,12 @@
 # Lost & Found Repository Audit
 
-Audit snapshot: 2026-10-13. This report describes the checked-out repository and its current uncommitted state; it does not describe a live deployment.
+Audit snapshot: 2026-10-24. This report describes the checked-out repository and its current worktree; it does not describe a live deployment. See the 2026-10-24 addendum for the latest verified state.
 
 ## Repository state and architecture
 
 - The project is a Django 6.1.1 application with separate `accounts`, `items`, `claims`, `matches`, `notifications`, and `reports` apps. Django templates serve authentication, reporting, claims, notifications, and admin functions. The project uses the built-in `User` model with a one-to-one `Profile` role, SQLite by default, and PostgreSQL when `DATABASE_URL` is set.
-- The current checkout is `main` at `3a8f920`, equal to `origin/main`, `origin/v1-28-2026`, and `origin/HEAD`. `origin/v1-9-28-2026` is an ancestor (`46476a0`); no divergent branch is present among the available refs.
-- The worktree was already dirty before implementation: tracked modifications in `.gitignore`, `README.md`, `config/urls.py`, `items/urls.py`, and `items/views.py`, and untracked `AGENTS.md`, `items/management/commands/seed_demo_data.py`, and Next.js files (`src/`, `package*.json`, `next.config.ts`, etc.). These changes are preserved.
+- This audit follows the 2026-10-13 historic snapshot and its subsequent remediations. The current work is based on `origin/main` at `b7ab771`, on branch `codex/explore-item-claim-cta`; its latest changes are detailed in the 2026-10-24 addendum below.
+- The earlier pre-existing worktree changes described in the historic 2026-10-13 snapshot were carried into the merged mainline. This addendum records only newly verified changes and findings from the current follow-up.
 - A Next.js 16.4 frontend has been added alongside Django. Its `/` landing and `/browse` routes are Next pages. Django remains the backend for legacy workflows, with a read-only JSON item endpoint added in the pre-existing worktree changes. This is a hybrid implementation, not a Django-only project.
 
 ## Existing functionality
@@ -213,7 +213,7 @@ Remaining implementation depends on school or hosting decisions: staff-only vers
 
 This is a follow-up review of the current reorganized checkout. The worktree already contains a broad staged/unstaged directory reorganization and frontend/backend changes; those existing changes were preserved. The local frontend and backend servers were not running, so browser-based end-to-end flows and live hosting behavior could not be exercised.
 
-### Findings to address
+### Findings from the pre-remediation snapshot (status updated in later addenda)
 
 #### P0 — Critical Next.js dependency advisories
 
@@ -298,3 +298,51 @@ Using the local seeded demo member, sign-in through the Next.js proxy succeeded 
 - Deployment instructions now describe separate Railway backend/frontend services, private service networking, migrations, HTTPS, email/media configuration, and paired database/media backup and restore drills. The example environment no longer contains a hard-coded secret.
 
 Verification: **187 passed and 1 PostgreSQL-only test skipped** on local SQLite; Next.js build passed; production dependency audit found zero vulnerabilities; local Django checks and migration checks passed; fail-closed production startup was confirmed when the secret is absent. `check --deploy` with synthetic production settings reported only the two intentional HSTS recommendations about subdomains/preload. The PostgreSQL job could not be run locally because Docker Desktop's daemon is unavailable. The connected Railway account requires reauthentication, so no Railway service, email credentials, database, or storage volume could be inspected or changed. No production deploy was made.
+
+## Complete system audit addendum (2026-10-24)
+
+This follow-up was implemented on the existing `codex/explore-item-claim-cta` branch. PR #3 had already been merged before this work was complete, so the audit is in PR #4. No deployment or merge was performed by this audit.
+
+### Confirmed issues fixed
+
+- **P1 — Production frontend could silently call localhost:** backend URL selection had a localhost fallback even in production. It now requires explicit `DJANGO_URL` in production, validates that it is an origin, and rejects loopback URLs when hosting markers are present. Frontend proxy and CSRF calls now time out and return a clear unavailable response; session checks distinguish backend outage from signed-out state. CI sets its backend URL explicitly.
+- **P1 — Exact pickup location leaked from legacy item details:** anonymous and unrelated users could see building, room, workstation, and approximate time. These fields are now shown only to the item reporter, an administrator, or an approved claimant. Regression coverage checks anonymous, unrelated, pending-claim, reporter, and approved-claim access.
+- **P1 — Handoff confirmation could be forged or lost in concurrent requests:** administrators could confirm on behalf of a party, and two confirmations could overwrite one another. Only the actual claimant/reporter may confirm; the state update locks the claim row and records each party independently. Repeat confirmations are idempotent. A PostgreSQL-only concurrency test was added.
+- **P1 — Claim approval messaging implied return was complete:** approval screens and notifications now clarify that item return remains pending until both parties confirm handoff.
+- **P2 — Match notification deduplication suppressed distinct matches:** notifications were keyed only by item, so a second match for the same item could disappear. Notifications now reference the specific match, deduplicate per match and recipient, and link directly to it.
+- **P2 — Repeated claim submission link after filing:** found-item details now link to the user's current claim when one exists rather than offering a duplicate submit action.
+- **P2 — Matching missed common Filipino/English terms and simple typos:** deterministic normalization covers selected common object/color equivalents and tolerates small token spelling errors. Scores remain suggestions and never approve claims.
+- **P2 — Vulnerable Pillow dependency:** upgraded Pillow from 12.3.0 to 13.0.0 and added Python dependency auditing to CI.
+- **P2 — No persistent login throttle:** failed attempts were unlimited. Added a database-backed, HMAC-keyed rolling threshold (5 failures per username per 15 minutes by default), `429` plus `Retry-After`, expired-row cleanup, successful-login reset, environment overrides, and regression tests. This works across app instances using the production PostgreSQL database.
+
+### Verification on this checkout
+
+- `py manage.py test`: **203 passed, 2 skipped**. The skips are PostgreSQL row-lock/concurrency tests and require PostgreSQL; local tests used SQLite. Django system checks passed. Django emitted the existing non-blocking warning that `backend/staticfiles/` does not exist before `collectstatic`.
+- `py manage.py makemigrations --check --dry-run`: no ungenerated model changes; notification relation migration `0003_notification_related_match.py` is included.
+- `npm run build`: passed; Next.js compilation and TypeScript passed and the build generated all routes.
+- `npm audit`: zero vulnerabilities.
+- `py -m pip_audit -r requirements.txt`: zero reported vulnerabilities.
+- `git diff --check`: passed; only Git line-ending conversion notices were emitted.
+- GitHub Actions on PR #4: both `verify` runs and both PostgreSQL service runs passed after correcting a missing test import and removing a PostgreSQL-incompatible hard-coded primary-key expectation.
+
+### Remaining follow-up / environment limits
+
+- PostgreSQL CI now executes and passes the row-lock/concurrency checks; local SQLite still cannot validate row-lock behavior.
+- The application throttles repeated guesses against one username. Network/IP request limits still need configuration at the trusted hosting ingress; the app intentionally does not trust spoofable forwarded IP headers.
+- Decide school policy for email verification, MFA, reporter review authority, handoff evidence, and personal-data retention/export before enforcing rules.
+- Validate production health, email/password reset delivery, persistent media, backups/restores, and actual hosted browser-to-database flows in the authorized hosting environment. No deployment or merge was made as part of this audit.
+- A visual browser walkthrough was not available during this follow-up; frontend quality was checked by build, route/API tests, and existing local route checks, not a new manual visual session.
+
+### Follow-up completion update (2026-10-24)
+
+Further implementation and real browser verification were completed on the same branch and PR after the preceding snapshot. No merge or deployment was performed. This update supersedes earlier notes that form redirects, public item pagination, and matching-upload validation were still open; those paths are now implemented. Notification detail GETs are read-only.
+
+- **P1 - Django form redirects were not followed correctly by the Next frontend:** form requests received Django 302 responses through the API proxy, while the browser helper misread them as HTML errors. The proxy now converts same-backend-origin redirects into JSON containing a relative frontend path, preserves response cookies, and refuses to forward external redirect targets. Registration and login now complete through the proxy.
+- **P1 - Exact approximate time and live-match room leaked to unrelated users:** public catalog responses now hide approximate time, and match suggestions reveal room only to an admin, the item reporter, or an approved claimant. Regression tests cover both APIs.
+- **P2 - Low contrast and unlabeled browse filters:** darker readable text colors were applied across the shared frontend palette, browse type/category selects now have explicit accessible names, and the brand link's accessible name matches visible content. Disabled auth/report buttons keep readable contrast.
+- **P2 - Frontend verification had no repeatable quality gates:** ESLint, TypeScript, Vitest/RTL, Playwright, and axe checks are wired into CI. Browser tests cover mobile registration -> login -> dashboard and mobile browse search. Test services use isolated ports and explicit CSRF origins; the Windows runner uses the Python launcher when needed.
+- **P2 - Avoidable React state updates in effects:** report match state resets on form changes, and the admin record drawer keys fetched detail by record ID to prevent stale content while switching records.
+- **Verification:** `py manage.py test` - **205 passed, 2 PostgreSQL-only tests skipped**; `py manage.py check` - passed; `py manage.py makemigrations --check --dry-run` - no changes; `npm run check` - passed (lint, typecheck, 1 component test); `npm run build` - passed; `npm run test:e2e` - **2 passed**, including axe scans with no violations on registration and browse; `npm audit` and `py -m pip_audit -r requirements.txt` - zero known vulnerabilities; `git diff --check` - passed.
+- **Remaining implementation warnings:** ESLint reports nine existing `<img>` optimization warnings for user-uploaded/dynamic images. A shared Next image-host policy depends on the eventual media host configuration. Django also emits a non-blocking missing `staticfiles/` warning before collection.
+- **Remaining verification and policy limits:** this browser suite exercises key registration/login/dashboard and browse-search paths; it is not an exhaustive manual test of every legacy route, role, or browser. Two PostgreSQL-only tests skip locally but run in CI. Production PostgreSQL, SMTP delivery, persistent media, backups/restores, ingress/IP throttling, school identity/MFA, claim reviewer authority, and data export/retention require hosting access or institution policy decisions.
+- **Manual visual verification:** the earlier note that no browser test was available is superseded; headless mobile browser journeys and axe accessibility scans now pass. A manual walkthrough of every legacy route is still outstanding.

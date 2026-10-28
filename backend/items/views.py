@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.db.models import Exists, OuterRef, Q
 from django.db.models import Q
 from django.db import transaction
 from django.core.paginator import Paginator
@@ -23,6 +24,12 @@ from reports.models import AbuseReport
 def api_items_view(request):
     """Read-only JSON catalog used by the Next.js item discovery screen."""
     items = Item.objects.filter(status=Item.STATUS_ACTIVE).select_related('category', 'reporter__profile')
+    is_admin = request.user.is_authenticated and is_admin_user(request.user)
+    if request.user.is_authenticated and not is_admin:
+        from claims.models import Claim
+        items = items.annotate(_has_approved_claim=Exists(Claim.objects.filter(
+            item_id=OuterRef('pk'), claimant=request.user, status=Claim.STATUS_APPROVED,
+        )))
     query = request.GET.get('q', '').strip()
     item_type = request.GET.get('type', '').strip().upper()
     if query:
@@ -52,7 +59,12 @@ def api_items_view(request):
         'room': '',
         'workstation': '',
         'date_occurred': item.date_occurred.isoformat(),
-        'approximate_time': item.approximate_time.isoformat() if item.approximate_time else None,
+        'approximate_time': item.approximate_time.isoformat() if (
+            item.approximate_time and (
+                is_admin or item.reporter_id == getattr(request.user, 'pk', None)
+                or getattr(item, '_has_approved_claim', False)
+            )
+        ) else None,
         'image': item.image.url if item.image else None,
         'reporter_name': item.reporter.get_full_name() or item.reporter.username,
         'reporter_username': item.reporter.username,
@@ -1060,6 +1072,7 @@ def item_detail_view(request, pk):
     can_archive = False
     can_restore = False
     can_claim = False
+    can_view_precise_location = False
     can_mark_unclaimed = False
     can_mark_claimed = False
     has_pending_claim = False
@@ -1069,6 +1082,7 @@ def item_detail_view(request, pk):
     if request.user.is_authenticated:
         is_owner = item.reporter == request.user
         is_admin = is_admin_user(request.user)
+        can_view_precise_location = is_owner or is_admin
         can_edit = is_owner or is_admin
         if item.is_active() or item.is_unclaimed():
             can_archive = is_owner or is_admin
@@ -1091,6 +1105,12 @@ def item_detail_view(request, pk):
             elif not existing or existing.status in [ClaimModel.STATUS_REJECTED, ClaimModel.STATUS_WITHDRAWN]:
                 can_claim = True
 
+        if not can_view_precise_location and item.is_found():
+            from claims.models import Claim as ClaimModel
+            can_view_precise_location = ClaimModel.objects.filter(
+                item=item, claimant=request.user, status=ClaimModel.STATUS_APPROVED
+            ).exists()
+
         # Count claims for item reporter / admin
         if is_owner or is_admin:
             from claims.models import Claim as ClaimModel
@@ -1101,6 +1121,7 @@ def item_detail_view(request, pk):
         'can_edit': can_edit,
         'can_archive': can_archive,
         'can_restore': can_restore,
+        'can_view_precise_location': can_view_precise_location,
         'can_claim': can_claim,
         'can_mark_unclaimed': can_mark_unclaimed,
         'can_mark_claimed': can_mark_claimed,
@@ -1254,6 +1275,9 @@ def archive_item_view(request, pk):
         return render(request, '403.html', status=403)
 
     if request.method == 'POST':
+        if item.status != Item.STATUS_ACTIVE:
+            messages.info(request, 'This item is already archived.')
+            return redirect('items:my_items')
         item.status = Item.STATUS_ARCHIVED
         item.save()
         record_event(request.user, 'item.archived', item, f'@{request.user.username} archived item report #{item.pk}: "{item.title}".')
@@ -1281,6 +1305,9 @@ def restore_item_view(request, pk):
         return render(request, '403.html', status=403)
 
     if request.method == 'POST':
+        if item.status != Item.STATUS_ARCHIVED:
+            messages.info(request, 'This item is already active.')
+            return redirect('items:my_items')
         item.status = Item.STATUS_ACTIVE
         item.save()
         record_event(request.user, 'item.restored', item, f'@{request.user.username} restored item report #{item.pk}: "{item.title}".')

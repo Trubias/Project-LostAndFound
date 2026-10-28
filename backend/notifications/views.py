@@ -23,7 +23,7 @@ def notification_list_view(request):
     """Show all notifications for the logged-in user with optional filter."""
     notifications_qs = Notification.objects.filter(
         recipient=request.user
-    ).select_related('related_item', 'related_claim')
+    ).select_related('related_item', 'related_claim', 'related_match')
 
     # Filter by read/unread
     read_filter = request.GET.get('filter', '').strip().lower()

@@ -132,6 +132,17 @@ class FrontendPageDataFlowTests(TestCase):
         self.assertIn('Reported by', labels)
         self.assertIn('Report submitted', labels)
 
+    def test_found_item_claim_link_changes_to_existing_claim(self):
+        claimant = User.objects.create_user(username='page_claimant', password='test-pass-123')
+        self.client.force_login(claimant)
+        initial = self.get_page(f'/items/{self.found.pk}').json()
+        self.assertIn({'label': 'Submit a claim', 'href': f'/claims/item/{self.found.pk}/submit'}, initial['links'])
+
+        claim = Claim.objects.create(item=self.found, claimant=claimant, message='Mine', proof_description='Unique proof')
+        existing = self.get_page(f'/items/{self.found.pk}').json()
+        self.assertIn({'label': 'View your claim', 'href': f'/claims/{claim.pk}'}, existing['links'])
+        self.assertNotIn('Submit a claim', [link['label'] for link in existing['links']])
+
     def test_admin_match_detail_exposes_review_actions(self):
         match = ItemMatch.objects.create(lost_item=self.lost, found_item=self.found, score=75)
         self.client.force_login(self.admin)

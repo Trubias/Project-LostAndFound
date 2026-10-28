@@ -28,6 +28,8 @@ are stored as ItemMatch records.
 """
 
 import re
+import unicodedata
+from difflib import SequenceMatcher
 from datetime import date
 from django.db.models import Q
 
@@ -52,28 +54,69 @@ STOPWORDS = {
     'have', 'had', 'has', 'be', 'been', 'are', 'were', 'not', 'no', 'so',
 }
 
+# Small, deterministic English/Filipino vocabulary normalization. These only
+# affect candidate ranking; every match still requires human review.
+TOKEN_SYNONYMS = {
+    'cellphone': 'phone', 'cellphones': 'phone', 'celphone': 'phone',
+    'smartphone': 'phone', 'mobile': 'phone', 'selpon': 'phone',
+    'backpack': 'bag', 'backpacks': 'bag', 'knapsack': 'bag',
+    'bagpack': 'bag', 'slingbag': 'bag', 'shoulderbag': 'bag',
+    'pitaka': 'wallet', 'purse': 'wallet', 'wallets': 'wallet',
+    'payong': 'umbrella', 'umbrellas': 'umbrella',
+    'tumbler': 'bottle', 'waterbottle': 'bottle', 'bote': 'bottle',
+    'susi': 'key', 'keys': 'key', 'sapatos': 'shoe', 'shoes': 'shoe',
+    'itim': 'black', 'puti': 'white', 'pula': 'red', 'asul': 'blue',
+    'bughaw': 'blue', 'berde': 'green', 'dilaw': 'yellow',
+}
+
 
 # ── Text utilities ────────────────────────────────────────────────────────────
 
 def _tokenize(text):
-    """Lowercase, remove punctuation, split into non-stopword words."""
+    """Normalize accents and common synonyms into non-stopword tokens."""
     if not text:
         return set()
-    text = re.sub(r'[^\w\s]', ' ', text.lower())
+    text = unicodedata.normalize('NFKD', text.lower())
+    text = ''.join(character for character in text if not unicodedata.combining(character))
+    text = re.sub(r'[^\w\s]', ' ', text)
     words = {
-        w for w in text.split()
-        if w and w not in STOPWORDS and (len(w) > 1 or w.isdigit())
+        TOKEN_SYNONYMS.get(word, word) for word in text.split()
+        if word and word not in STOPWORDS and (len(word) > 1 or word.isdigit())
     }
     return words
 
 
 def _jaccard(set_a, set_b):
-    """Jaccard similarity coefficient in [0, 1]."""
+    """Weighted Jaccard with one-to-one typo tolerance for longer tokens."""
     if not set_a and not set_b:
         return 0.0
-    intersection = len(set_a & set_b)
-    union = len(set_a | set_b)
-    return intersection / union if union else 0.0
+    remaining_a = set(set_a)
+    remaining_b = set(set_b)
+    overlap = len(remaining_a & remaining_b)
+    remaining_a -= remaining_b
+    remaining_b -= set(set_a)
+
+    fuzzy_pairs = []
+    for token_a in remaining_a:
+        if len(token_a) < 4:
+            continue
+        for token_b in remaining_b:
+            if len(token_b) < 4:
+                continue
+            similarity = SequenceMatcher(None, token_a, token_b, autojunk=False).ratio()
+            if similarity >= 0.86:
+                fuzzy_pairs.append((similarity, token_a, token_b))
+
+    matched_a = set()
+    matched_b = set()
+    for similarity, token_a, token_b in sorted(fuzzy_pairs, reverse=True):
+        if token_a not in matched_a and token_b not in matched_b:
+            overlap += similarity
+            matched_a.add(token_a)
+            matched_b.add(token_b)
+
+    union = len(set_a) + len(set_b) - overlap
+    return overlap / union if union else 0.0
 
 
 def _word_overlap_score(text_a, text_b, max_points):
