@@ -43,11 +43,19 @@ class Item(models.Model):
         (TYPE_FOUND, 'Found'),
     ]
 
-    # Status choices
-    STATUS_ACTIVE = 'ACTIVE'
-    STATUS_ARCHIVED = 'ARCHIVED'
+    # Status choices — lifecycle for Lost items:
+    #   ACTIVE (Lost — not yet seen/found)
+    #   UNCLAIMED (Seen/found by someone, waiting for owner to claim)
+    #   CLAIMED  (Owner has claimed / returned)
+    #   ARCHIVED (Admin-archived / resolved old records)
+    STATUS_ACTIVE = 'ACTIVE'        # Lost: not yet seen
+    STATUS_UNCLAIMED = 'UNCLAIMED'  # Seen/found — awaiting owner claim
+    STATUS_CLAIMED = 'CLAIMED'      # Owner has claimed it
+    STATUS_ARCHIVED = 'ARCHIVED'    # Archived / closed
     STATUS_CHOICES = [
-        (STATUS_ACTIVE, 'Active'),
+        (STATUS_ACTIVE, 'Lost'),       # display as "Lost" in UI
+        (STATUS_UNCLAIMED, 'Unclaimed'),
+        (STATUS_CLAIMED, 'Claimed'),
         (STATUS_ARCHIVED, 'Archived'),
     ]
 
@@ -77,6 +85,15 @@ class Item(models.Model):
         on_delete=models.CASCADE,
         related_name='reported_items'
     )
+    found_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='found_items',
+    )
+    found_at = models.DateTimeField(null=True, blank=True)
+    found_description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -90,10 +107,44 @@ class Item(models.Model):
         return self.item_type == self.TYPE_FOUND
 
     def is_active(self):
+        """Active = status is ACTIVE (Lost — not yet seen)."""
         return self.status == self.STATUS_ACTIVE
+
+    def is_unclaimed(self):
+        """Unclaimed = item has been seen/found, waiting for owner."""
+        return self.status == self.STATUS_UNCLAIMED
+
+    def is_claimed(self):
+        """Claimed = owner has retrieved the item."""
+        return self.status == self.STATUS_CLAIMED
 
     def is_archived(self):
         return self.status == self.STATUS_ARCHIVED
+
+    def get_status_display_label(self):
+        """Human-readable status label for templates."""
+        mapping = {
+            self.STATUS_ACTIVE: 'Found' if self.is_found() else 'Lost',
+            self.STATUS_UNCLAIMED: 'Unclaimed',
+            self.STATUS_CLAIMED: 'Claimed',
+            self.STATUS_ARCHIVED: 'Archived',
+        }
+        return mapping.get(self.status, self.status)
+
+    def get_status_display(self):
+        return self.get_status_display_label()
+
+    def get_status_badge_class(self):
+        """Bootstrap badge color class for each status."""
+        if self.status == self.STATUS_ACTIVE and self.is_found():
+            return 'success'
+        mapping = {
+            self.STATUS_ACTIVE: 'warning',      # Lost → orange
+            self.STATUS_UNCLAIMED: 'info',       # Unclaimed → blue
+            self.STATUS_CLAIMED: 'success',      # Claimed → green
+            self.STATUS_ARCHIVED: 'secondary',   # Archived → gray
+        }
+        return mapping.get(self.status, 'secondary')
 
     class Meta:
         ordering = ['-created_at']

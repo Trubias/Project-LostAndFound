@@ -707,13 +707,7 @@
             {% endif %}
           </a>
         </li>
-        <li class="sidebar-item">
-          <a class="sidebar-link" href="/admin/" target="_blank">
-            <i class="bi bi-gear-fill sidebar-icon"></i>
-            <span>Django Admin</span>
-            <i class="bi bi-box-arrow-up-right ms-auto small opacity-50"></i>
-          </a>
-        </li>
+
 
         {% else %}
         <!-- ── USER NAVIGATION ── -->
@@ -725,13 +719,7 @@
           </a>
         </li>
 
-        <li class="sidebar-heading">Discovery</li>
-        <li class="sidebar-item">
-          <a class="sidebar-link {% block nav_items %}{% endblock %} {% if request.resolver_match.url_name == 'item_list' and not page_mode or page_mode == 'ALL' %}active{% endif %}" href="{% url 'items:item_list' %}">
-            <i class="bi bi-grid-3x3-gap-fill sidebar-icon"></i>
-            <span>Browse All</span>
-          </a>
-        </li>
+        <li class="sidebar-heading">Browse Items</li>
         <li class="sidebar-item">
           <a class="sidebar-link {% block nav_lost %}{% endblock %} {% block nav_lost_user %}{% endblock %} {% if request.resolver_match.url_name == 'lost_items' %}active{% endif %}" href="{% url 'items:lost_items' %}">
             <i class="bi bi-question-circle-fill sidebar-icon"></i>
@@ -740,22 +728,16 @@
         </li>
         <li class="sidebar-item">
           <a class="sidebar-link {% block nav_found %}{% endblock %} {% block nav_found_user %}{% endblock %} {% if request.resolver_match.url_name == 'found_items' %}active{% endif %}" href="{% url 'items:found_items' %}">
-            <i class="bi bi-bag-check-fill sidebar-icon"></i>
-            <span>Found Items</span>
+            <i class="bi bi-bag-check-fill sidebar-icon text-info"></i>
+            <span>Found (Unclaimed)</span>
           </a>
         </li>
 
-        <li class="sidebar-heading">Report Item</li>
+        <li class="sidebar-heading">Report</li>
         <li class="sidebar-item">
           <a class="sidebar-link {% block nav_report_lost %}{% endblock %} {% if request.resolver_match.url_name == 'report_lost' %}active{% endif %}" href="{% url 'items:report_lost' %}">
             <i class="bi bi-plus-circle-fill sidebar-icon text-warning"></i>
-            <span>Report Lost</span>
-          </a>
-        </li>
-        <li class="sidebar-item">
-          <a class="sidebar-link {% block nav_report_found %}{% endblock %} {% if request.resolver_match.url_name == 'report_found' %}active{% endif %}" href="{% url 'items:report_found' %}">
-            <i class="bi bi-plus-circle-fill sidebar-icon text-success"></i>
-            <span>Report Found</span>
+            <span>Report Lost Item</span>
           </a>
         </li>
 

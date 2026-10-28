@@ -60,6 +60,7 @@ urlpatterns = [
     path('api/frontend-page/', frontend_page_data, name='frontend_page_data'),
     path('api/admin/<path:action>/', admin_action, name='frontend_admin_action'),
     path('api/match-suggestions/', match_suggestions, name='match_suggestions'),
+    path('', include('api_testing.urls')),
     path('health/', health_check, name='health_check'),
     path('ready/', readiness_check, name='readiness_check'),
     path('admin/', admin.site.urls),

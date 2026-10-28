@@ -258,7 +258,7 @@ class ItemsSprint2Tests(TestCase):
                 'date_occurred': str(date.today()),
             })
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response['Location'], '/browse/?type=LOST&submitted=1')
+        self.assertEqual(response['Location'], '/dashboard')
         item = Item.objects.get(title='Black Leather Wallet')
         self.assertEqual(item.reporter, self.user1)
         self.assertEqual(item.item_type, Item.TYPE_LOST)
@@ -695,4 +695,3 @@ class ItemsSprint3SearchAndDiscoveryTests(TestCase):
         resp_my = self.client.get(reverse('items:my_items'))
         self.assertEqual(resp_my.status_code, 302)
         self.assertIn('/login/', resp_my.url)
-

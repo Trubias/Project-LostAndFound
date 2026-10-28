@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Report Found Item — {{ item.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width: 560px;">
+  <div class="card border-0 shadow-sm rounded-4 p-4 text-center animate-in">
+    <div class="mb-3">
+      <div class="mx-auto mb-3" style="width:64px;height:64px;border-radius:50%;background:#e0f2fe;display:flex;align-items:center;justify-content:center;">
+        <i class="bi bi-eye-fill text-info fs-2"></i>
+      </div>
+      <h1 class="h5 fw-bold mb-1">Report {{ item.title }} as Found</h1>
+      <p class="text-muted small">
+        Describe where and how you found this item. The owner will be notified, and your report will appear in My Claims.
+      </p>
+    </div>
+    <div class="card bg-light border-0 rounded-3 p-3 mb-4 text-start">
+      <div class="fw-semibold text-dark mb-1">{{ item.title }}</div>
+      <small class="text-muted"><i class="bi bi-geo-alt me-1"></i>{{ item.location }}</small>
+      <p class="small text-muted mt-2 mb-0">{{ item.description }}</p>
+    </div>
+    <div class="d-flex gap-2 justify-content-center">
+      <form method="post" class="w-100">
+        {% csrf_token %}
+        <label for="found_description" class="form-label text-start w-100">Where and how did you find this item?</label>
+        <textarea id="found_description" name="found_description" class="form-control mb-3" rows="4" required></textarea>
+        <button type="submit" class="btn btn-info text-white fw-semibold px-4">
+          <i class="bi bi-check-circle me-1"></i>Confirm
+        </button>
+        <a href="{% url 'items:lost_items' %}" class="btn btn-outline-secondary px-4">Back to lost items</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -218,6 +218,25 @@ def notify_item_restored(item, triggering_user=None):
         related_item=item,
     )
 
+def notify_item_found(item, finder):
+    profile = getattr(finder, 'profile', None)
+    finder_name = (
+        'Admin'
+        if finder.is_superuser or (profile and profile.role == 'ADMIN')
+        else finder.get_full_name() or finder.username
+    )
+    return create_notification(
+        recipient=item.reporter,
+        notification_type=Notification.TYPE_SYSTEM,
+        title='Your lost item has been found',
+        message=(
+            f'Your lost item "{item.title}" has been found by {finder_name}. '
+            'Please review the report and contact the finder to arrange its return.'
+        ),
+        related_item=item,
+        allow_repeat=True,
+    )
+
 
 # ── Match notifications ───────────────────────────────────────────────────────
 

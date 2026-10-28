@@ -27,7 +27,7 @@ def _item_card(item, request):
         'id': item.pk,
         'title': item.title,
         'subtitle': f"{item.get_item_type_display()} · {item.location}",
-        'badge': item.get_status_display(),
+        'badge': item.get_status_display_label(),
         'type': item.item_type,
         'image': item.image.url if item.image else None,
         'href': f'/items/{item.pk}',
@@ -135,7 +135,7 @@ def _admin_recent_activity(request, limit=8):
             'sort': item.created_at,
             'record': {'id': item.pk, 'title': item.title,
                 'subtitle': f'{item.get_item_type_display()} report · {item.location}',
-                'badge': item.get_status_display(), 'href': f'/items/{item.pk}',
+                'badge': item.get_status_display_label(), 'href': f'/items/{item.pk}',
                 'meta': [f'Reported by {item.reporter.get_full_name() or item.reporter.username} (@{item.reporter.username})', f'Created {timezone.localtime(item.created_at).strftime("%b %d, %Y · %I:%M %p")}', f'Updated {timezone.localtime(item.updated_at).strftime("%b %d, %Y · %I:%M %p")}']},
         })
     for claim in Claim.objects.select_related('item', 'claimant', 'reviewed_by').order_by('-created_at')[:limit]:
@@ -318,11 +318,20 @@ def _admin_payload(path, request):
         } for i in rows], 'categories':list(Category.objects.order_by('name').values('id','name')), 'filters':{'q':query,'type':item_type,'status':status_filter,'category':category_filter}}
     if path.endswith('/claims'):
         rows = Claim.objects.select_related('item','claimant','reviewed_by').order_by('-created_at')
+        available_found_items = Item.objects.filter(
+            item_type=Item.TYPE_FOUND,
+            status=Item.STATUS_ACTIVE,
+        ).select_related('category', 'reporter').order_by('-updated_at')
         query = request.GET.get('q', '').strip()
         status_filter = request.GET.get('status', '').strip().upper()
         handoff_filter = request.GET.get('handoff', '').strip().lower()
         if query:
             rows = rows.filter(Q(item__title__icontains=query) | Q(claimant__username__icontains=query) | Q(claimant__email__icontains=query) | Q(message__icontains=query) | Q(proof_description__icontains=query))
+            available_found_items = available_found_items.filter(
+                Q(title__icontains=query) |
+                Q(location__icontains=query) |
+                Q(reporter__username__icontains=query)
+            )
         if status_filter in dict(Claim.STATUS_CHOICES):
             rows = rows.filter(status=status_filter)
         else:
@@ -339,7 +348,16 @@ def _admin_payload(path, request):
             handoff_filter = ''
         page_obj = _paginate(rows, request)
         rows = page_obj.object_list
-        return {**base, **_page_meta(page_obj), 'title':'Claim reviews', 'summary':'Transparent review ledger showing who filed each claim and how it was resolved.', 'records':[{
+        return {**base, **_page_meta(page_obj), 'title':'Claim reviews', 'summary':'Review submitted claims and found items that are available to claim.', 'availableFoundCount': available_found_items.count(), 'availableFoundItems':[{
+            'id':item.pk,
+            'title':item.title,
+            'subtitle':f'Found item · {item.location} · {item.category.name if item.category else "Uncategorized"}',
+            'badge':'Available to claim',
+            'type':item.item_type,
+            'image':item.image.url if item.image else None,
+            'href':f'/items/{item.pk}',
+            'meta':[f'Reported by {item.reporter.get_full_name() or item.reporter.username} (@{item.reporter.username})', f'Found on {item.date_occurred.isoformat()}'],
+        } for item in available_found_items[:50]], 'records':[{
             'id':c.pk,'title':c.item.title,'subtitle':f'Claim filed by @{c.claimant.username} · {c.item.get_item_type_display()} report','badge':c.get_status_display(),'href':f'/claims/{c.pk}',
             'meta':[f'Submitted {timezone.localtime(c.created_at).strftime("%b %d, %Y · %I:%M %p")}', f'Reviewed by @{c.reviewed_by.username}' if c.reviewed_by_id else 'Awaiting reviewer', f'Reviewed {timezone.localtime(c.reviewed_at).strftime("%b %d, %Y · %I:%M %p")}' if c.reviewed_at else 'No decision recorded', f'Handoff: {"complete" if c.handoff_completed_at else "needs pickup plan" if not c.handoff_at else "awaiting claimant" if not c.handoff_confirmed_by_claimant_at else "awaiting return confirmation"}' if c.status == Claim.STATUS_APPROVED else 'Handoff starts after approval', f'Reviewer note: {c.reviewer_notes}' if c.reviewer_notes else 'No reviewer note'],
         } for c in rows], 'filters':{'q':query,'status':status_filter,'handoff':handoff_filter}}
@@ -363,7 +381,7 @@ def _admin_payload(path, request):
         rows = Notification.objects.select_related('recipient', 'related_item', 'related_claim').order_by('-created_at')
         page_obj = _paginate(rows, request)
         rows = page_obj.object_list
-        return {**base, **_page_meta(page_obj), 'title':'System notifications', 'summary':'Notification ledger with recipient, related record, and read status.', 'records':[{'id':n.pk,'title':n.title,'subtitle':n.message,'badge':'Read' if n.is_read else 'Unread','href':f'/admin-dashboard/notifications/{n.pk}','meta':[f'To {n.recipient.get_full_name() or n.recipient.username} (@{n.recipient.username})',f'Type {n.get_notification_type_display()}',f'Created {timezone.localtime(n.created_at).strftime("%b %d, %Y · %I:%M %p")}',f'Related item: {n.related_item.title}' if n.related_item_id else (f'Related claim #{n.related_claim_id}' if n.related_claim_id else 'No related record')]} for n in rows]}
+        return {**base, **_page_meta(page_obj), 'title':'System notifications', 'summary':'Notification ledger with recipient, related record, and read status.', 'unreadCount':Notification.objects.filter(is_read=False).count(), 'records':[{'id':n.pk,'title':n.title,'subtitle':n.message,'badge':'Read' if n.is_read else 'Unread','href':f'/admin-dashboard/notifications/{n.pk}','meta':[f'To {n.recipient.get_full_name() or n.recipient.username} (@{n.recipient.username})',f'Type {n.get_notification_type_display()}',f'Created {timezone.localtime(n.created_at).strftime("%b %d, %Y · %I:%M %p")}',f'Related item: {n.related_item.title}' if n.related_item_id else (f'Related claim #{n.related_claim_id}' if n.related_claim_id else 'No related record')]} for n in rows]}
     return {**base, 'mode':'dashboard', 'title':'Admin workspace', 'summary':'Manage your community’s lost and found activity.', 'links':[{'label':'Admin overview','href':'/admin-dashboard'},{'label':'Users','href':'/admin-dashboard/users'},{'label':'Items','href':'/admin-dashboard/items'},{'label':'Claims','href':'/admin-dashboard/claims'},{'label':'Categories','href':'/admin-dashboard/categories'},{'label':'Matches','href':'/admin-dashboard/matches'},{'label':'Reports','href':'/reports'}]}
 
 
@@ -371,6 +389,8 @@ def _admin_payload(path, request):
 def frontend_page_data(request):
     """Return the data needed by a React page without rendering a Django template."""
     path = '/' + request.GET.get('path', '').strip('/')
+    if path == '/items/my-found-items':
+        path = '/claims/my'
     if path == '/':
         return JsonResponse({'mode':'dashboard','title':'Find your way back to what matters.','summary':'Browse community reports and help lost things find their way home.','links':[{'label':'Explore items','href':'/browse'},{'label':'How it works','href':'/how-it-works'},{'label':'Our community','href':'/community'}]})
 
@@ -391,7 +411,55 @@ def frontend_page_data(request):
         return JsonResponse({'mode':'list','eyebrow':'Community board','title':'Explore items','summary':f'{paginator.count} active reports from your community.','records':records,'categories':list(Category.objects.order_by('name').values('id','name')),'page':page_obj.number,'num_pages':paginator.num_pages,'has_previous':page_obj.has_previous(),'has_next':page_obj.has_next()})
 
     item_match = re.fullmatch(r'/items/(\d+)', path)
+    item_mark_found = re.fullmatch(r'/items/(\d+)/mark-found', path)
+    item_mark_unclaimed = re.fullmatch(r'/items/(\d+)/mark-unclaimed', path)
     item_report = re.fullmatch(r'/items/(\d+)/report', path)
+    if item_mark_found:
+        protected = _protected(request, admin=True)
+        if protected:
+            return JsonResponse(protected)
+        item = Item.objects.filter(pk=item_mark_found.group(1)).first()
+        if not item:
+            return JsonResponse({'detail': 'Item not found.'}, status=404)
+        if item.item_type != Item.TYPE_LOST or item.status != Item.STATUS_ACTIVE:
+            return JsonResponse({'detail': 'Only active lost reports can be marked as found.'}, status=409)
+        return JsonResponse({
+            'mode': 'form',
+            'title': f'Report finding {item.title}',
+            'summary': f'Lost item: {item.title}. Owner: {item.reporter.get_full_name() or item.reporter.username}. Location: {item.location}. Original description: {item.description}',
+            'action': f'/api/admin/items/{item.pk}/mark-found',
+            'actionLabel': 'Confirm',
+            'fields': [{
+                'name': 'found_description',
+                'label': 'Describe where and how you found this item',
+                'type': 'textarea',
+                'required': True,
+            }],
+        })
+    if item_mark_unclaimed:
+        protected = _protected(request)
+        if protected:
+            return JsonResponse(protected)
+        item = Item.objects.filter(
+            pk=item_mark_unclaimed.group(1),
+            item_type=Item.TYPE_LOST,
+            status=Item.STATUS_ACTIVE,
+        ).first()
+        if not item or item.reporter_id == request.user.pk:
+            return JsonResponse({'detail': 'This lost item is not available to report as found.'}, status=404)
+        return JsonResponse({
+            'mode': 'form',
+            'title': f'Claim {item.title}',
+            'summary': f'Lost item: {item.title}. Owner: {item.reporter.get_full_name() or item.reporter.username}. Location: {item.location}. Date reported: {item.date_occurred.isoformat()}. Original description: {item.description}',
+            'action': f'/items/{item.pk}/mark-unclaimed',
+            'actionLabel': 'Confirm',
+            'fields': [{
+                'name': 'found_description',
+                'label': 'Describe where and how you found this item',
+                'type': 'textarea',
+                'required': True,
+            }],
+        })
     if item_report:
         protected = _protected(request)
         if protected:
@@ -406,27 +474,53 @@ def frontend_page_data(request):
         if not item:
             return JsonResponse({'detail':'Item not found.'}, status=404)
         is_admin = request.user.is_authenticated and (request.user.is_superuser or getattr(getattr(request.user, 'profile', None), 'role', None) == Profile.ROLE_ADMIN)
-        links = [{'label': 'Back to Explore', 'href': '/browse'}]
         is_owner = request.user.is_authenticated and item.reporter_id == request.user.pk
-        if is_admin or is_owner:
-            links.extend([
-                {'label': 'Edit report', 'href': f'/items/{item.pk}/edit'},
-                {'label': 'Archive report' if item.status == Item.STATUS_ACTIVE else 'Restore report', 'href': f'/items/{item.pk}/archive' if item.status == Item.STATUS_ACTIVE else f'/items/{item.pk}/restore'},
-            ])
+        is_finder = request.user.is_authenticated and item.found_by_id == request.user.pk
+        if is_admin:
+            links = []
+            if item.item_type == Item.TYPE_LOST and item.status == Item.STATUS_ACTIVE:
+                links.append({'label': 'Claim', 'href': f'/items/{item.pk}/mark-found'})
+            if item.status == Item.STATUS_ACTIVE:
+                links.extend([
+                    {'label': 'Edit report', 'href': f'/items/{item.pk}/edit'},
+                    {'label': 'Archive report', 'href': f'/items/{item.pk}/archive'},
+                ])
+                if not is_owner:
+                    links.append({'label': 'Report a concern', 'href': f'/items/{item.pk}/report'})
+            elif item.status == Item.STATUS_ARCHIVED:
+                links.extend([
+                    {'label': 'Edit report', 'href': f'/items/{item.pk}/edit'},
+                    {'label': 'Restore report', 'href': f'/items/{item.pk}/restore'},
+                ])
             if item.item_type == Item.TYPE_FOUND:
                 links.append({'label': 'View claims', 'href': f'/claims/item/{item.pk}'})
+        elif is_owner:
+            links = [{'label': 'Back', 'href': '/items/my-reports'}]
+            if item.status in [Item.STATUS_ACTIVE, Item.STATUS_ARCHIVED]:
+                links.append({'label': 'Edit report', 'href': f'/items/{item.pk}/edit'})
+            if item.status == Item.STATUS_ACTIVE:
+                links.append({'label': 'Archive report', 'href': f'/items/{item.pk}/archive'})
+            elif item.status == Item.STATUS_ARCHIVED:
+                links.append({'label': 'Restore report', 'href': f'/items/{item.pk}/restore'})
+            if item.item_type == Item.TYPE_FOUND:
+                links.append({'label': 'View claims', 'href': f'/claims/item/{item.pk}'})
+        elif item.item_type == Item.TYPE_LOST and item.status == Item.STATUS_ACTIVE:
+            links = [{'label': 'Claim', 'href': f'/items/{item.pk}/mark-unclaimed'}]
+            if request.user.is_authenticated:
+                links.append({'label': 'Report a concern', 'href': f'/items/{item.pk}/report'})
         elif item.item_type == Item.TYPE_FOUND and item.status == Item.STATUS_ACTIVE:
             existing_claim = Claim.objects.filter(item=item, claimant=request.user).exclude(
                 status__in=[Claim.STATUS_REJECTED, Claim.STATUS_WITHDRAWN]
             ).order_by('-created_at').first() if request.user.is_authenticated else None
-            if existing_claim:
-                links.append({'label': 'View your claim', 'href': f'/claims/{existing_claim.pk}'})
-            else:
-                links.append({'label': 'Submit a claim', 'href': f'/claims/item/{item.pk}/submit'})
-        if request.user.is_authenticated and not is_owner and item.status == Item.STATUS_ACTIVE:
-            links.append({'label': 'Report a concern', 'href': f'/items/{item.pk}/report'})
+            links = [{'label': 'View your claim', 'href': f'/claims/{existing_claim.pk}'}] if existing_claim else [{'label': 'Submit a claim', 'href': f'/claims/item/{item.pk}/submit'}]
+            if request.user.is_authenticated:
+                links.append({'label': 'Report a concern', 'href': f'/items/{item.pk}/report'})
+        else:
+            links = [{'label': 'Back to Explore', 'href': '/browse'}]
+        if is_finder and item.item_type == Item.TYPE_FOUND:
+            links = [{'label': 'Back to Explore', 'href': '/browse'}]
         is_approved_claimant = request.user.is_authenticated and Claim.objects.filter(item=item, claimant=request.user, status=Claim.STATUS_APPROVED).exists()
-        detail_stats=[('Category',item.category.name if item.category else 'Uncategorized'),('Location',item.location),('Date',item.date_occurred.isoformat()),('Status',item.get_status_display())]
+        detail_stats=[('Category',item.category.name if item.category else 'Uncategorized'),('Location',item.location),('Date',item.date_occurred.isoformat()),('Status',item.get_status_display_label())]
         if is_admin or is_owner or is_approved_claimant:
             detail_stats.extend([(label, value) for label, value in [('Building',item.building),('Room',item.room),('Nearby landmark',item.workstation)] if value])
         if is_admin:
@@ -435,6 +529,35 @@ def frontend_page_data(request):
         if request.GET.get('reported') == '1':
             summary += ' Your concern was sent to the moderation queue.'
         return JsonResponse({'mode':'detail','title':item.title,'eyebrow':item.get_item_type_display(),'summary':summary,'image':item.image.url if item.image else None,'stats':_stats(detail_stats),'links':links})
+
+    if path == '/lost-items':
+        protected = _protected(request)
+        if protected:
+            return JsonResponse(protected)
+        items = Item.objects.filter(
+            item_type=Item.TYPE_LOST,
+            status=Item.STATUS_ACTIVE,
+        ).exclude(
+            reporter=request.user,
+        ).select_related('category', 'reporter').order_by('-created_at')
+        query = request.GET.get('q', '').strip()
+        if query:
+            items = items.filter(
+                Q(title__icontains=query) |
+                Q(description__icontains=query) |
+                Q(location__icontains=query) |
+                Q(category__name__icontains=query)
+            )
+        page_obj = _paginate(items, request, per_page=24)
+        return JsonResponse({
+            'mode': 'list',
+            'eyebrow': 'Community board',
+            'title': 'Lost items',
+            'summary': f'{page_obj.paginator.count} active lost reports from the community.',
+            'records': [_item_card(item, request) for item in page_obj.object_list],
+            **_page_meta(page_obj),
+            'filters': {'q': query},
+        })
 
     if path in ['/dashboard','/items/my-reports','/claims/my','/matches','/notifications','/profile']:
         protected = _protected(request)
@@ -445,12 +568,54 @@ def frontend_page_data(request):
             mine = Item.objects.filter(reporter=user)
             claims = Claim.objects.filter(claimant=user)
             community_items = Item.objects.filter(status=Item.STATUS_ACTIVE).select_related('category').order_by('-created_at')
-            return JsonResponse({'mode':'dashboard','eyebrow':'Your space','userName':user.get_full_name() or user.username,'title':f"Welcome back, {user.first_name or user.username}.",'summary':'Here is what is happening with your reports.','stats':_stats([('Active reports',mine.filter(status=Item.STATUS_ACTIVE).count()),('Archived reports',mine.filter(status=Item.STATUS_ARCHIVED).count()),('My claims',claims.count()),('Possible matches',ItemMatch.objects.filter(Q(lost_item__reporter=user)|Q(found_item__reporter=user),status=ItemMatch.STATUS_PENDING).count())]),'links':[{'label':'Report lost','href':'/items/report/lost'},{'label':'Report found','href':'/items/report/found'},{'label':'My reports','href':'/items/my-reports'},{'label':'My claims','href':'/claims/my'},{'label':'Matches','href':'/matches'},{'label':'Notifications','href':'/notifications'},{'label':'My profile','href':'/profile'}],'records':[_item_card(i,request) for i in mine.order_by('-created_at')[:6]],'exploreItems':{'lost':[_item_card(i,request) for i in community_items.filter(item_type=Item.TYPE_LOST)[:6]],'found':[_item_card(i,request) for i in community_items.filter(item_type=Item.TYPE_FOUND)[:6]]}})
+            return JsonResponse({'mode':'dashboard','eyebrow':'Your space','userName':user.get_full_name() or user.username,'title':f"Welcome back, {user.first_name or user.username}.",'summary':'Here is what is happening with your reports.','stats':_stats([('Active reports',mine.filter(status=Item.STATUS_ACTIVE).count()),('Archived reports',mine.filter(status=Item.STATUS_ARCHIVED).count()),('My claims',claims.count()),('Possible matches',ItemMatch.objects.filter(Q(lost_item__reporter=user)|Q(found_item__reporter=user),status=ItemMatch.STATUS_PENDING).count())]),'links':[{'label':'Report lost','href':'/items/report/lost'},{'label':'Report found','href':'/lost-items'},{'label':'My reports','href':'/items/my-reports'},{'label':'My claims','href':'/claims/my'},{'label':'Matches','href':'/matches'},{'label':'Notifications','href':'/notifications'},{'label':'My profile','href':'/profile'}],'records':[_item_card(i,request) for i in mine.order_by('-created_at')[:6]],'exploreItems':{'lost':[_item_card(i,request) for i in community_items.filter(item_type=Item.TYPE_LOST)[:6]],'found':[_item_card(i,request) for i in community_items.filter(item_type=Item.TYPE_FOUND)[:6]]}})
         if path == '/items/my-reports':
             return JsonResponse({'mode':'list','title':'My reports','summary':'Items you have reported.','records':[_item_card(i,request) for i in Item.objects.filter(reporter=user).select_related('category').order_by('-created_at')[:100]]})
         if path == '/claims/my':
             rows=Claim.objects.filter(claimant=user).select_related('item').order_by('-created_at')[:100]
-            return JsonResponse({'mode':'list','title':'My claims','summary':'Updates about items you have claimed.','records':[{'id':c.pk,'title':c.item.title,'subtitle':f'{c.item.get_item_type_display()} report · {c.item.location}','badge':c.get_status_display(),'href':f'/claims/{c.pk}','meta':[f'Filed {timezone.localtime(c.created_at).strftime("%b %d, %Y")}',f'Your reason: {c.message}',f'Identifying details: {c.proof_description}']} for c in rows]})
+            claim_records = [{
+                'sort': c.created_at,
+                'record': {
+                    'id': c.pk,
+                    'title': c.item.title,
+                    'subtitle': f'{c.item.get_item_type_display()} report · {c.item.location}',
+                    'badge': c.get_status_display(),
+                    'href': f'/claims/{c.pk}',
+                    'meta': [
+                        f'Filed {timezone.localtime(c.created_at).strftime("%b %d, %Y")}',
+                        f'Your reason: {c.message}',
+                        f'Identifying details: {c.proof_description}',
+                    ],
+                },
+            } for c in rows]
+            found_items = Item.objects.filter(found_by=user).select_related(
+                'reporter',
+            ).order_by('-found_at')[:100]
+            found_records = [{
+                'sort': item.found_at or item.updated_at,
+                'record': {
+                    'id': -item.pk,
+                    'title': item.title,
+                    'subtitle': f'You reported this item found for @{item.reporter.username} · {item.location}',
+                    'badge': 'Found',
+                    'href': f'/items/{item.pk}',
+                    'meta': [
+                        f'Your description: {item.found_description}',
+                        f'Confirmed {timezone.localtime(item.found_at).strftime("%b %d, %Y · %I:%M %p")}' if item.found_at else 'Confirmation date unavailable',
+                    ],
+                },
+            } for item in found_items]
+            records = sorted(
+                claim_records + found_records,
+                key=lambda entry: entry['sort'],
+                reverse=True,
+            )
+            return JsonResponse({
+                'mode': 'list',
+                'title': 'My claims',
+                'summary': 'Updates about your ownership claims and the lost items you have helped find.',
+                'records': [entry['record'] for entry in records[:100]],
+            })
         if path == '/matches':
             rows=ItemMatch.objects.filter(Q(lost_item__reporter=user)|Q(found_item__reporter=user)).select_related('lost_item','found_item').order_by('-created_at')[:100]
             return JsonResponse({'mode':'list','title':'Possible matches','summary':'Items that may be connected to your reports.','records':[{'id':m.pk,'title':f'{m.lost_item.title} ↔ {m.found_item.title}','subtitle':f'{m.score}% match','badge':m.get_status_display(),'href':f'/matches/{m.pk}','meta':[f'Lost report: {m.lost_item.location}',f'Found report: {m.found_item.location}',f'Suggested {timezone.localtime(m.created_at).strftime("%b %d, %Y")}']} for m in rows]})
