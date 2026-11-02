@@ -1,10 +1,13 @@
 """Authenticated live suggestions for either report type."""
 from django.http import JsonResponse
 from django.core.exceptions import ValidationError
+from django.db.models import Exists, OuterRef
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
 from items.models import Category, Item
+from accounts.models import Profile
+from claims.models import Claim
 from matches.engine import MATCH_THRESHOLD, calculate_score
 from matches.image_similarity import image_similarity
 from config.validators import validate_image_upload
@@ -42,10 +45,17 @@ def match_suggestions(request):
     if uploaded_image:
         report.image = uploaded_image
 
+    profile = getattr(request.user, 'profile', None)
+    is_admin = request.user.is_superuser or bool(profile and profile.role == Profile.ROLE_ADMIN)
     candidates = Item.objects.filter(
         item_type=candidate_type,
         status=Item.STATUS_ACTIVE,
-    ).select_related('category').order_by('-created_at')[:200]
+    ).select_related('category').order_by('-created_at')
+    if not is_admin:
+        candidates = candidates.annotate(_has_approved_claim=Exists(Claim.objects.filter(
+            item_id=OuterRef('pk'), claimant=request.user, status=Claim.STATUS_APPROVED,
+        )))
+    candidates = candidates[:200]
     suggestions = []
     for lost in candidates:
         breakdown = calculate_score(lost, report)
@@ -57,7 +67,10 @@ def match_suggestions(request):
             'title': lost.title,
             'description': lost.description,
             'location': lost.location,
-            'room': lost.room,
+            'room': lost.room if (
+                is_admin or lost.reporter_id == request.user.pk
+                or getattr(lost, '_has_approved_claim', False)
+            ) else '',
             'category': lost.category.name if lost.category else 'Uncategorized',
             'image': lost.image.url if lost.image else None,
             'href': f'/items/{lost.pk}',

@@ -40,11 +40,13 @@ from django.test import TestCase, Client, override_settings
 from django.core import mail
 from django.contrib.auth.models import User
 from django.urls import reverse
-from datetime import date
+from django.utils import timezone
+from datetime import date, timedelta
 from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
 
 from accounts.models import Profile
+from accounts.models import LoginAttempt
 from items.models import Category, Item
 from claims.models import Claim
 from accounts.forms import ProfileUpdateForm
@@ -161,6 +163,39 @@ class LogoutMethodTests(TestCase):
         self.assertRedirects(response, reverse('accounts:login'))
         response = self.client.get(reverse('accounts:dashboard'))
         self.assertEqual(response.status_code, 302)
+
+
+@override_settings(LOGIN_FAILURE_LIMIT=3, LOGIN_FAILURE_WINDOW_SECONDS=600)
+class LoginRateLimitTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='throttle-user', password='CorrectPass123!')
+        self.url = reverse('accounts:login')
+
+    def test_repeated_failures_are_throttled_and_success_clears_history(self):
+        for _ in range(3):
+            response = self.client.post(self.url, {'username': self.user.username, 'password': 'wrong'})
+            self.assertEqual(response.status_code, 200)
+
+        blocked = self.client.post(self.url, {'username': self.user.username, 'password': 'wrong'})
+        self.assertEqual(blocked.status_code, 429)
+        self.assertIn('Retry-After', blocked)
+        self.assertEqual(LoginAttempt.objects.count(), 3)
+
+        self.client.post(self.url, {'username': self.user.username, 'password': 'CorrectPass123!'})
+        self.assertEqual(LoginAttempt.objects.count(), 3, 'A blocked success must not authenticate or clear the throttle.')
+
+    def test_successful_login_clears_recent_failures(self):
+        self.client.post(self.url, {'username': self.user.username, 'password': 'wrong'})
+        response = self.client.post(self.url, {'username': self.user.username, 'password': 'CorrectPass123!'})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(LoginAttempt.objects.count(), 0)
+
+    def test_expired_failures_do_not_block_new_attempts(self):
+        self.client.post(self.url, {'username': self.user.username, 'password': 'wrong'})
+        LoginAttempt.objects.update(created_at=timezone.now() - timedelta(minutes=20))
+        response = self.client.post(self.url, {'username': self.user.username, 'password': 'wrong'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(LoginAttempt.objects.count(), 1)
 
 
 class AdminAccessAndPermissionsTests(TestCase):

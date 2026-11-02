@@ -49,6 +49,6 @@ export function AdminRecordsTable({ records, emptyLabel = 'No records yet.' }: {
           <td className="px-6 py-4 text-right"><button type="button" onClick={() => openRecord(record)} className="inline-flex whitespace-nowrap items-center gap-1 text-xs font-semibold text-[#557b60] hover:underline">Open record <ArrowUpRight size={13}/></button></td>
         </tr>)}</tbody>
       </table>
-    </div> : <div className="px-6 py-14 text-center"><PackageSearch className="mx-auto text-[#829087]" size={22}/><p className="mt-3 text-sm font-semibold text-[#405148]">{emptyLabel}</p><p className="mt-2 text-xs text-[#87938a]">New records and their activity will appear here.</p></div>}
+    </div> : <div className="px-6 py-14 text-center"><PackageSearch className="mx-auto text-[#5d6a61]" size={22}/><p className="mt-3 text-sm font-semibold text-[#405148]">{emptyLabel}</p><p className="mt-2 text-xs text-[#87938a]">New records and their activity will appear here.</p></div>}
   </div>;
 }

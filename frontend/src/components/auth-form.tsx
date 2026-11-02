@@ -49,8 +49,8 @@ export function AuthForm({ mode, error = false }: { mode: AuthMode; error?: bool
       {error ? <p role="alert" className="rounded-xl bg-[#f8efea] px-4 py-3 text-sm text-[#915b4e]">{isRegister ? 'We couldn’t create your account with those details. Check the fields and try again.' : 'That username and password didn’t match. Please try again.'}</p> : null}
       {formErrors.length ? <div role="alert" className="space-y-1 rounded-xl bg-[#f8efea] px-4 py-3 text-sm text-[#915b4e]">{formErrors.map((message, index) => <p key={`${index}-${message}`}>{message}</p>)}</div> : null}
       {csrfError ? <p role="alert" className="text-sm text-[#9a5546]">We couldn’t connect to the sign-in service. Please refresh and try again.</p> : null}
-      <button disabled={!csrf || submitting} className="mt-2 flex w-full items-center justify-center rounded-xl bg-[#274c3b] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#1e3d2f] disabled:cursor-wait disabled:opacity-60">{submitting ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'} <ArrowRight size={15} className="ml-2"/></button>
-      <p className="pt-2 text-center text-sm text-[#829087]">{isRegister ? 'Already part of Findly?' : 'New to Findly?'}{' '}
+      <button disabled={!csrf || submitting} className="mt-2 flex w-full items-center justify-center rounded-xl bg-[#274c3b] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#1e3d2f] disabled:cursor-wait disabled:opacity-100">{submitting ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'} <ArrowRight size={15} className="ml-2"/></button>
+      <p className="pt-2 text-center text-sm text-[#5d6a61]">{isRegister ? 'Already part of Findly?' : 'New to Findly?'}{' '}
         <Link className="font-semibold text-[#55705d]" href={isRegister ? '/login' : '/register'}>{isRegister ? 'Log in' : 'Create an account'}</Link>
       </p>
     </form>
@@ -58,5 +58,5 @@ export function AuthForm({ mode, error = false }: { mode: AuthMode; error?: bool
 }
 
 function Field({ label, name, type = 'text', placeholder, icon, autoComplete }: { label: string; name: string; type?: string; placeholder: string; icon: React.ReactNode; autoComplete: string }) {
-  return <label className="block text-sm font-semibold text-[#405148]">{label}<span className="relative mt-2 block"><span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-[#8b968e]">{icon}</span><input required name={name} type={type} placeholder={placeholder} autoComplete={autoComplete} className="w-full rounded-xl border border-[#e4eae2] bg-white py-3 pl-10 pr-3.5 text-sm font-normal text-[#293b30] outline-none transition placeholder:text-[#a5aea6] focus:border-[#8ba68b] focus:ring-4 focus:ring-[#dce8dc]/60"/></span></label>;
+  return <label className="block text-sm font-semibold text-[#405148]">{label}<span className="relative mt-2 block"><span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-[#5f6c63]">{icon}</span><input required name={name} type={type} placeholder={placeholder} autoComplete={autoComplete} className="w-full rounded-xl border border-[#e4eae2] bg-white py-3 pl-10 pr-3.5 text-sm font-normal text-[#293b30] outline-none transition placeholder:text-[#a5aea6] focus:border-[#8ba68b] focus:ring-4 focus:ring-[#dce8dc]/60"/></span></label>;
 }

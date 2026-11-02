@@ -49,12 +49,7 @@ export function BackendForm({ action, actionLabel, fields, error = false }: { ac
 
   useEffect(() => {
     if (!showMatchPanel || !csrf) return;
-    if (!readyToMatch) {
-      setSuggestions([]);
-      setSuggestionError(false);
-      setMatching(false);
-      return;
-    }
+    if (!readyToMatch) return;
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       const payload = new FormData();
@@ -85,6 +80,9 @@ export function BackendForm({ action, actionLabel, fields, error = false }: { ac
 
   function updatePreview(event: ChangeEvent<HTMLFormElement>) {
     if (!showMatchPanel) return;
+    setSuggestions([]);
+    setSuggestionError(false);
+    setMatching(false);
     const data = new FormData(event.currentTarget);
     const file = data.get('image');
     setPreviewInput({
@@ -120,7 +118,7 @@ export function BackendForm({ action, actionLabel, fields, error = false }: { ac
 }
 
 function SubmitButton({ csrf, label = 'Continue', submitting }: { csrf: string; label?: string; submitting: boolean }) {
-  return <button disabled={!csrf || submitting} className="inline-flex items-center rounded-xl bg-[#274c3b] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#1e3d2f] disabled:cursor-wait disabled:opacity-60">{submitting ? 'Please wait…' : label} <ArrowRight size={15} className="ml-2"/></button>;
+  return <button disabled={!csrf || submitting} className="inline-flex items-center rounded-xl bg-[#274c3b] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#1e3d2f] disabled:cursor-wait disabled:opacity-100">{submitting ? 'Please wait…' : label} <ArrowRight size={15} className="ml-2"/></button>;
 }
 
 function MatchPanel({ suggestions, matching, error, reportType, activeIndex, setActiveIndex, touchStart, setTouchStart }: {
@@ -155,7 +153,7 @@ function MatchPanel({ suggestions, matching, error, reportType, activeIndex, set
         <a href={current.href} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-xl border border-[#e0e8dd] bg-white transition hover:border-[#b9cbb8]">
           {current.image ? <img src={current.image} alt={`Photo for ${current.title}`} className="h-36 w-full object-cover"/> : <div className="grid h-24 place-items-center bg-[#edf2e9] text-[11px] text-[#87978a]">No photo provided</div>}
           <div className="p-4"><div className="flex items-start justify-between gap-2"><h3 className="text-sm font-bold leading-5 text-[#34483a]">{current.title}</h3><span className="shrink-0 rounded-full bg-[#edf4e9] px-2 py-1 text-[10px] font-bold text-[#52765b]">{current.photoMatch ? `${current.photoSimilarity}% photo` : `${current.score}% match`}</span></div>
-            <p className="mt-2 text-[11px] leading-5 text-[#68766d]">{current.description}</p><p className="mt-3 border-t border-[#edf0eb] pt-3 text-[10px] text-[#829087]">{current.category} · {current.room || current.location}</p>
+            <p className="mt-2 text-[11px] leading-5 text-[#68766d]">{current.description}</p><p className="mt-3 border-t border-[#edf0eb] pt-3 text-[10px] text-[#5d6a61]">{current.category} · {current.room || current.location}</p>
           </div>
         </a>
       </div>
@@ -163,6 +161,6 @@ function MatchPanel({ suggestions, matching, error, reportType, activeIndex, set
       {current.photoMatch ? <p className="mt-3 text-[10px] leading-4 text-[#78917a]">Similar photo. Review the description and identifying details before contacting the reporter.</p> : null}
     </div> : null}
     {!matching && !error && !current ? <div className="mt-5 rounded-xl border border-dashed border-[#d7e1d5] bg-white/75 p-4"><p className="text-xs font-semibold text-[#54685a]">No close matches found</p><p className="mt-1 text-[11px] leading-5 text-[#849087]">We compare the title, description, category, location, date, and photo when available.</p></div> : null}
-    <p className="mt-4 text-[10px] leading-4 text-[#98a198]">A suggested match is only a clue. Verify the item's identifying details.</p>
+    <p className="mt-4 text-[10px] leading-4 text-[#98a198]">A suggested match is only a clue. Verify the item&apos;s identifying details.</p>
   </aside>;
 }

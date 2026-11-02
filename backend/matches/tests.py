@@ -57,6 +57,16 @@ class MatchingEngineUnitTests(TestCase):
         pts = match_engine.score_location(self.lost_phone, self.found_phone)
         self.assertEqual(pts, 25)
 
+    def test_filipino_and_english_item_terms_and_colors_normalize(self):
+        self.assertEqual(match_engine._tokenize('selpon cellphone smartphone'), {'phone'})
+        self.assertEqual(match_engine._tokenize('payong pula'), {'umbrella', 'red'})
+        self.assertEqual(match_engine._tokenize('itim bag'), {'black', 'bag'})
+
+    def test_title_score_tolerates_a_small_typo(self):
+        self.lost_phone.title = 'Black Samsng Phone'
+        self.found_phone.title = 'Black Samsung Phone'
+        self.assertGreaterEqual(match_engine.score_title(self.lost_phone, self.found_phone), 17)
+
     def test_structured_room_details_change_location_similarity(self):
         self.lost_phone.location = 'Computer Lab'
         self.lost_phone.room = 'ComLab 1'
@@ -104,6 +114,22 @@ class MatchingEngineUnitTests(TestCase):
         found_response = self.client.post(reverse('match_suggestions'), {**common, 'item_type': Item.TYPE_FOUND})
         self.assertEqual(found_response.status_code, 200)
         self.assertIn(self.lost_phone.pk, [item['id'] for item in found_response.json()['results']])
+
+    def test_live_suggestions_hide_another_reporters_exact_room(self):
+        self.found_phone.room = 'PRIVATE-ROOM-991'
+        self.found_phone.save(update_fields=['room', 'updated_at'])
+        self.client.force_login(self.user1)
+        response = self.client.post(reverse('match_suggestions'), {
+            'title': self.lost_phone.title,
+            'description': self.lost_phone.description,
+            'category': str(self.cat_electronics.pk),
+            'location': self.lost_phone.location,
+            'date_occurred': self.lost_phone.date_occurred.isoformat(),
+            'item_type': Item.TYPE_LOST,
+        })
+        self.assertEqual(response.status_code, 200)
+        candidate = next(row for row in response.json()['results'] if row['id'] == self.found_phone.pk)
+        self.assertEqual(candidate['room'], '')
 
     def test_lost_does_not_match_lost(self):
         # Matching engine only queries opposite type

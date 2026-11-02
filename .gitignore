@@ -53,6 +53,9 @@ htmlcov/
 node_modules/
 .next/
 out/
+playwright-report/
+test-results/
+*.tsbuildinfo
 
 # Migrations (keep these — they are part of the project)
 # !**/migrations/*.py

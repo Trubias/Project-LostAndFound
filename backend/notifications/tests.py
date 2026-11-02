@@ -71,6 +71,27 @@ class NotificationModelTests(TestCase):
         self.assertEqual(n1.pk, n2.pk)
         self.assertEqual(Notification.objects.filter(recipient=self.user1).count(), 1)
 
+    def test_each_possible_match_notifies_reporter_and_duplicate_event_is_deduped(self):
+        found_one = Item.objects.create(
+            title='Found backpack', description='Blue backpack', item_type=Item.TYPE_FOUND,
+            category=self.category, location='Library', date_occurred=date(2026, 9, 20), reporter=self.user2,
+        )
+        found_two = Item.objects.create(
+            title='Found blue bag', description='Blue bag', item_type=Item.TYPE_FOUND,
+            category=self.category, location='Library', date_occurred=date(2026, 9, 20), reporter=self.user2,
+        )
+        first = ItemMatch.objects.create(lost_item=self.item, found_item=found_one, score=80)
+        second = ItemMatch.objects.create(lost_item=self.item, found_item=found_two, score=75)
+
+        notif_svc.notify_possible_match(first)
+        notif_svc.notify_possible_match(first)
+        notif_svc.notify_possible_match(second)
+
+        self.assertEqual(Notification.objects.filter(recipient=self.user1, notification_type=Notification.TYPE_POSSIBLE_MATCH).count(), 2)
+        self.assertEqual(Notification.objects.filter(recipient=self.user1, related_match=first).count(), 1)
+        self.assertEqual(Notification.objects.filter(recipient=self.user1, related_match=second).count(), 1)
+        self.assertEqual(Notification.objects.filter(recipient=self.user2, notification_type=Notification.TYPE_POSSIBLE_MATCH).count(), 2)
+
 
 class NotificationViewTests(TestCase):
     def setUp(self):
@@ -186,6 +207,8 @@ class ClaimNotificationWorkflowTests(TestCase):
             notification_type=Notification.TYPE_CLAIM_APPROVED
         ).first()
         self.assertIsNotNone(bob_notif)
+        self.assertIn('has not been returned yet', bob_notif.message)
+        self.assertIn('both you and the reporter confirm it', bob_notif.message)
 
     def test_claim_rejection_creates_notification(self):
         claim = Claim.objects.create(

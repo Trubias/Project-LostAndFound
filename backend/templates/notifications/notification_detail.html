@@ -33,7 +33,7 @@
           </div>
 
           <!-- Related Links -->
-          {% if notification.related_item or notification.related_claim %}
+          {% if notification.related_item or notification.related_claim or notification.related_match %}
           <h2 class="h6 fw-bold text-uppercase text-muted mb-3">
             <i class="bi bi-link-45deg me-1"></i>Related Information
           </h2>
@@ -68,6 +68,17 @@
                     <i class="bi bi-hand-index-thumb me-1"></i>View Claim
                   </a>
                 </div>
+              </div>
+            </div>
+            {% endif %}
+
+            {% if notification.related_match %}
+            <div class="col-sm-6">
+              <div class="border rounded-3 p-3 h-100">
+                <span class="text-muted small d-block mb-1">Related Match</span>
+                <div class="fw-bold mb-2">{{ notification.related_match.lost_item.title }} ↔ {{ notification.related_match.found_item.title }}</div>
+                <span class="badge bg-warning text-dark rounded-pill mb-2">{{ notification.related_match.score }}% match</span>
+                <div><a href="{% url 'matches:detail' notification.related_match.pk %}" class="btn btn-outline-warning btn-sm rounded-pill px-3">Review Match</a></div>
               </div>
             </div>
             {% endif %}

@@ -43,6 +43,8 @@ For local use, copy `backend/.env.example` to `backend/.env`; Django loads it wi
 | `DJANGO_SECRET_KEY` | **Yes** | Required outside explicit local debug/test | Cryptographic salt for sessions, CSRF, and passwords. Generate with `python -c "import secrets; print(secrets.token_urlsafe(60))"` | *(unique generated value)* |
 | `DJANGO_DEBUG` | **Yes** | `False` | Debug defaults off; recognized production environments reject `True` | `False` |
 | `DJANGO_ALLOWED_HOSTS` | **Yes** | `127.0.0.1,localhost` | Comma-separated list of allowed hostnames/domains | `lostandfound.up.railway.app,yourdomain.com` |
+| `DJANGO_LOGIN_FAILURE_LIMIT` | Optional | `5` | Failed login attempts per username before temporary blocking | `5` |
+| `DJANGO_LOGIN_FAILURE_WINDOW_SECONDS` | Optional | `900` | Rolling lockout window in seconds (minimum 60) | `900` |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | **Yes** | *(Empty)* | Comma-separated list of trusted HTTPS origins for CSRF validation | `https://lostandfound.up.railway.app,https://yourdomain.com` |
 | `DATABASE_URL` | **Yes in production** | SQLite for local development | PostgreSQL connection URL. Required in production; startup fails rather than silently using SQLite. | `postgres://user:password@host:port/dbname` |
 | `DJANGO_DB_CONN_MAX_AGE` | Optional | `0` local / `60` production | Seconds to reuse healthy database connections | `60` |
@@ -62,6 +64,8 @@ For local use, copy `backend/.env.example` to `backend/.env`; Django loads it wi
 | `DJANGO_EMAIL_HOST_PASSWORD` | **Yes in production** | *(Empty)* | SMTP account password/token | *(API Secret)* |
 | `DJANGO_DEFAULT_FROM_EMAIL` | **Yes in production** | `noreply@lostandfound.local` | Verified sender address for system email | `notifications@yourdomain.com` |
 | `MATCH_THRESHOLD` | Optional | `50` | Minimum score (0-100) for automatic Lost/Found matching | `50` |
+
+Failed-login events are stored in the configured database using an HMAC of the normalized username, not the plaintext username. Expired attempts are removed as login requests arrive. This protects one account across multiple app instances because production uses the shared PostgreSQL database. Configure network/IP request limits at the trusted hosting ingress as well; the application does not trust arbitrary forwarded client-IP headers.
 
 ---
 

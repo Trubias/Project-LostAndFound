@@ -65,7 +65,7 @@ export default function Home() {
                 </div>
               ))}
             </div>
-            <p className="text-xs text-[#8b968e]"><span className="font-bold text-[#43564a]">A community that cares</span><br />Little acts. Real connections.</p>
+            <p className="text-xs text-[#5f6c63]"><span className="font-bold text-[#43564a]">A community that cares</span><br />Little acts. Real connections.</p>
           </div>
         </div>
 
@@ -100,14 +100,14 @@ export default function Home() {
         <div className="mx-auto max-w-7xl">
           <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[.18em] text-[#709078]">A good place to begin</p>
+              <p className="text-[10px] font-bold uppercase tracking-[.18em] text-[#4f6956]">A good place to begin</p>
               <h2 id="start-here" className="mt-2 text-3xl font-semibold md:text-4xl">What brings you here?</h2>
             </div>
             <p className="max-w-sm text-sm leading-6 text-[#718078]">Browse reports freely. Sign in when you are ready to report an item or make a claim.</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <Link href="/browse?type=FOUND" className="group flex min-h-52 flex-col justify-between rounded-2xl border border-white bg-white p-6 transition hover:-translate-y-1 hover:shadow-xl hover:shadow-[#274c3b]/[.07] md:p-8">
-              <div className="flex items-start justify-between"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#eef3e9] text-[#52765b]"><Search size={21} /></span><ArrowUpRight size={19} className="text-[#8b968e] transition group-hover:text-[#426e51]" /></div>
+              <div className="flex items-start justify-between"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#eef3e9] text-[#52765b]"><Search size={21} /></span><ArrowUpRight size={19} className="text-[#5f6c63] transition group-hover:text-[#426e51]" /></div>
               <div><h3 className="text-xl font-semibold">I lost something</h3><p className="mt-2 max-w-md text-sm leading-6 text-[#7b8780]">Look through found items and check the details people have shared.</p><span className="mt-4 inline-flex items-center text-sm font-semibold text-[#426e51]">Browse found items <ArrowRight size={15} className="ml-2" /></span></div>
             </Link>
             <Link href="/items/report/found/" className="group flex min-h-52 flex-col justify-between rounded-2xl bg-[#274c3b] p-6 text-white transition hover:-translate-y-1 hover:bg-[#1e3d2f] hover:shadow-xl hover:shadow-[#274c3b]/15 md:p-8">
@@ -125,7 +125,7 @@ export default function Home() {
 
       <section className="mx-auto max-w-[1440px] px-6 pb-24 md:px-12">
         <div className="flex flex-wrap items-end justify-between gap-5">
-          <div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-[#709078]">From report to reunion</p><h2 className="mt-3 text-4xl font-semibold md:text-5xl">A little care goes <span className="serif text-[#598467]">a long way.</span></h2></div>
+          <div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-[#4f6956]">From report to reunion</p><h2 className="mt-3 text-4xl font-semibold md:text-5xl">A little care goes <span className="serif text-[#598467]">a long way.</span></h2></div>
           <Link href="/how-it-works" className="text-sm font-semibold text-[#55705d]">See how it works <ArrowRight size={15} className="ml-2 inline" /></Link>
         </div>
         <div className="mt-10 grid gap-4 md:grid-cols-3">

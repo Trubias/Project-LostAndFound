@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { getDjangoBackendUrl } from './src/lib/backend-url';
 
 const config: NextConfig = {
   allowedDevOrigins: ['127.0.0.1'],
@@ -16,7 +17,7 @@ const config: NextConfig = {
     }];
   },
   async rewrites() {
-    const backend = process.env.DJANGO_URL ?? 'http://127.0.0.1:8000';
+    const backend = getDjangoBackendUrl();
     return [{ source: '/media/:path*', destination: `${backend}/media/:path*` }];
   },
 };
